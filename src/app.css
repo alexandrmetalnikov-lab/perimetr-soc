@@ -1,0 +1,20 @@
+/* Палитра «Ночная смена» — см. docs/styleguide.md */
+:root{
+  --night:#0e1424; --night-2:#16223a; --ink:#e6dfcd; --soft:#97a0b0; --line:#2c3850;
+  --lamp:#e0a046; --mon:#4fb3b0; --paper:#e8e0cb; --paper-ink:#23221d; --alarm:#c4382c; --ok:#5f8f4e;
+  --stamp-allow:#4c7a3c; --stamp-block:#a8352b; --stamp-esc:#b7791f;
+  --f-display:"Rubik Mono One","Arial Black",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:var(--night);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(24px,env(safe-area-inset-bottom,0px))}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+a{color:var(--lamp)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

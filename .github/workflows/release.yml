@@ -1,0 +1,40 @@
+# Релиз по тегу версии (v0.2, v0.3 …): архив в GitHub Releases и, если настроено, загрузка на itch.io.
+# Для itch.io нужны:
+#   секрет  BUTLER_API_KEY — API-ключ itch.io (Settings → Secrets and variables → Actions → Secrets)
+#   переменная ITCH_TARGET — куда грузить, например «user/perimetr-soc:html5» (там же, вкладка Variables)
+name: Релиз
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run content:check
+      - run: npm run build
+      - name: Архив для itch.io
+        run: cd dist && zip -qr "../perimetr-soc-${GITHUB_REF_NAME}.zip" .
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: perimetr-soc-*.zip
+          generate_release_notes: true
+      - name: Загрузка на itch.io
+        if: env.BUTLER_API_KEY != '' && env.ITCH_TARGET != ''
+        run: |
+          curl -sL -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler && chmod +x butler/butler
+          ./butler/butler push dist "$ITCH_TARGET" --userversion "${GITHUB_REF_NAME#v}"

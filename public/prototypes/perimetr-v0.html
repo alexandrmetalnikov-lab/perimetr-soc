@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}</style>
+<title>Периметр SOC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: a night-shift desk. Queue rail | the paper on the desk | the binder of rules and directories. Stamps along the bottom edge. */
+:root{
+  --desk:#23251f; --desk-2:#2d3028; --line:#454a3d;
+  --paper:#e6e1d3; --paper-2:#d8d2c1; --ink:#22231d; --ink-soft:#5b5c50;
+  --ok:#4c7a3c; --deny:#a8352b; --esc:#b7791f; --mark:#e7c64a;
+  --text:#dcdcd0; --text-soft:#9a9d8b;
+  --f-display:"Rubik Mono One","Arial Black",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{background:var(--desk);color:var(--text);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 0;
+  background-image:repeating-linear-gradient(90deg,transparent 0 3px,rgba(255,255,255,.012) 3px 4px)}
+button{font:inherit;cursor:pointer}
+button:focus-visible,.f:focus-visible{outline:2px solid var(--mark);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.brand h1{font-family:var(--f-display);font-size:20px;letter-spacing:.04em;margin:0;color:var(--paper)}
+.brand span{font-family:var(--f-mono);font-size:12px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase}
+.meters{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.meter{display:flex;flex-direction:column;gap:2px}
+.meter small{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-soft)}
+.meter b{font-size:15px;font-weight:600;color:var(--paper)}
+.clock b{font-family:var(--f-display);font-size:22px;font-weight:400;color:var(--mark)}
+.bar{width:90px;height:6px;background:var(--desk-2);border:1px solid var(--line);margin-top:5px}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.pause{background:transparent;border:1px solid var(--line);color:var(--text);padding:6px 10px;font-family:var(--f-mono);font-size:12px}
+
+/* main grid */
+.desk{display:grid;grid-template-columns:200px minmax(0,1fr) minmax(0,400px);gap:16px;padding-block:16px 120px}
+@media (max-width:1050px){.desk{grid-template-columns:minmax(0,1fr)}.queue ol{display:flex;flex-wrap:wrap;gap:6px}.queue li{flex:1 1 140px}}
+
+.label{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-soft);margin:0 0 8px}
+.queue ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.queue li{border:1px solid var(--line);padding:8px 10px;font-size:12px;display:flex;justify-content:space-between;gap:8px;color:var(--text-soft);background:var(--desk-2)}
+.queue li.cur{border-color:var(--mark);color:var(--paper)}
+.queue li.done{opacity:.45;text-decoration:line-through}
+.queue li em{font-style:normal;font-family:var(--f-mono);font-size:11px}
+
+/* paper */
+.slot{position:relative;min-width:0}
+.paper{position:relative;background:var(--paper);color:var(--ink);padding:22px 24px 28px;box-shadow:0 18px 40px rgba(0,0,0,.45),0 2px 0 var(--paper-2) inset;
+  transform:rotate(-.4deg);transition:transform .45s cubic-bezier(.2,.7,.2,1),opacity .45s;min-height:420px}
+.paper.out{transform:translateX(60%) rotate(6deg);opacity:0}
+.paper.in{transform:translateY(-30px) rotate(-3deg);opacity:0}
+.paper h2{font-family:var(--f-display);font-weight:400;font-size:17px;margin:0 0 4px;text-wrap:balance}
+.paper .kind{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap}
+.hdrs{font-family:var(--f-mono);font-size:12.5px;border-top:1px dashed #a9a391;border-bottom:1px dashed #a9a391;padding:10px 0;margin:10px 0 14px;display:grid;gap:3px}
+.hdrs div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px}
+.hdrs div span:first-child{color:var(--ink-soft)}
+.body{max-width:65ch;font-size:14px}
+.body p{margin:0 0 10px}
+.att{display:inline-block;font-family:var(--f-mono);font-size:12px;border:1px solid #a9a391;padding:4px 8px;margin-top:6px}
+.scroll{overflow-x:auto}
+table.log{border-collapse:collapse;width:100%;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+table.log th{text-align:left;font-weight:500;color:var(--ink-soft);border-bottom:1px solid #a9a391;padding:4px 8px 4px 0;white-space:nowrap}
+table.log td{padding:5px 8px 5px 0;border-bottom:1px dotted #bdb7a5;vertical-align:top}
+.transcript{font-size:14px;display:grid;gap:8px;max-width:65ch}
+.transcript p{margin:0}
+.transcript b{font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--ink-soft);margin-right:6px}
+.ticket{margin-top:14px;border-left:3px solid var(--esc);background:var(--paper-2);padding:8px 12px;font-size:13px}
+
+/* inspectable fields */
+.f{border-radius:2px;transition:background .15s,box-shadow .15s}
+body.inspect .f{cursor:crosshair;box-shadow:0 0 0 1px rgba(183,121,31,.55);background:rgba(231,198,74,.12)}
+body.inspect .f:hover{background:rgba(231,198,74,.35)}
+.f.sel{background:var(--mark)!important;color:#1d1d16;box-shadow:0 0 0 2px var(--mark)!important}
+.f.hit{background:rgba(76,122,60,.45)!important}
+.f.miss{background:rgba(168,53,43,.4)!important}
+
+/* stamp */
+.stamp{position:absolute;right:28px;top:40px;font-family:var(--f-display);font-size:22px;padding:6px 14px;border:4px solid currentColor;transform:rotate(-12deg) scale(1.6);opacity:0;mix-blend-mode:multiply;pointer-events:none;letter-spacing:.04em}
+.stamp.on{animation:thunk .28s ease-out forwards}
+@keyframes thunk{to{transform:rotate(-12deg) scale(1);opacity:.85}}
+
+/* binder */
+.binder{background:var(--desk-2);border:1px solid var(--line);min-width:0;align-self:start}
+.tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tabs button{flex:1 1 auto;background:transparent;border:0;border-right:1px solid var(--line);color:var(--text-soft);padding:9px 8px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.tabs button:last-child{border-right:0}
+.tabs button[aria-selected="true"]{background:var(--paper);color:var(--ink)}
+.tabs .n{display:inline-block;min-width:16px;padding:0 4px;margin-left:4px;background:var(--mark);color:#1d1d16;font-weight:600}
+.page{padding:14px 16px 18px;font-size:13px}
+.page h3{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--mark);margin:14px 0 8px;font-weight:500}
+.page h3:first-child{margin-top:0}
+.page ol{margin:0;padding-left:20px;display:grid;gap:7px}
+.dir{display:grid;gap:10px}
+.dir .row{border-bottom:1px dotted var(--line);padding-bottom:8px;display:grid;gap:2px}
+.dir .row b{color:var(--paper);font-weight:600}
+.dir .row span{color:var(--text-soft)}
+.dir .row .mono{font-family:var(--f-mono);font-size:12px;color:var(--text)}
+.finding{border-left:3px solid var(--mark);padding:6px 10px;background:rgba(231,198,74,.06);margin-bottom:8px}
+.finding.call{border-color:var(--ok)}
+.empty{color:var(--text-soft)}
+
+/* action bar */
+.actions{position:fixed;left:0;right:0;bottom:0;z-index:5;background:#191b16;border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.tools,.stamps{display:flex;flex-wrap:wrap;gap:8px}
+.tool{background:transparent;border:1px solid var(--line);color:var(--text);padding:9px 12px;font-size:13px}
+.tool[aria-pressed="true"]{background:var(--mark);color:#1d1d16;border-color:var(--mark)}
+.tool:disabled{opacity:.4;cursor:not-allowed}
+.sbtn{font-family:var(--f-display);font-size:13px;letter-spacing:.04em;padding:10px 14px;background:transparent;border:3px solid currentColor;transition:transform .08s}
+.sbtn:active{transform:translateY(2px)}
+.sbtn:disabled{opacity:.35;cursor:not-allowed}
+.sbtn small{font-family:var(--f-mono);font-size:10px;display:block;letter-spacing:.06em}
+.s-ok{color:#86b46f}.s-deny{color:#e0675b}.s-esc{color:#e3a54a}
+
+/* citation slip & toast */
+.slips{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:20;display:grid;gap:8px;width:min(340px,calc(100vw - 32px))}
+.slip{background:#f1ede2;color:var(--ink);font-family:var(--f-mono);font-size:12px;padding:12px 14px;border-top:6px dashed var(--deny);box-shadow:0 10px 24px rgba(0,0,0,.5);animation:print .35s ease-out}
+.slip b{display:block;font-family:var(--f-display);font-weight:400;font-size:13px;color:var(--deny);margin-bottom:4px}
+.slip.info{border-top-color:var(--ok)}.slip.info b{color:var(--ok)}
+@keyframes print{from{transform:translateY(-20px);opacity:0}}
+
+/* overlays */
+.ov{position:fixed;inset:0;z-index:30;background:rgba(14,15,12,.82);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;
+  padding:calc(24px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--paper);color:var(--ink);max-width:760px;width:100%;padding:28px 28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.sheet h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0 0 6px;text-wrap:balance}
+.sheet .sub{font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:16px}
+.sheet p{max-width:65ch;margin:0 0 10px}
+.how{display:grid;gap:8px;margin:14px 0 20px;padding-left:20px}
+.go{font-family:var(--f-display);font-size:15px;background:var(--ink);color:var(--paper);border:0;padding:12px 20px}
+.totals{display:flex;flex-wrap:wrap;gap:24px;margin:10px 0 18px;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.totals div{display:grid}
+.totals small{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.totals b{font-family:var(--f-display);font-weight:400;font-size:22px}
+.rep{display:grid;gap:12px;margin-bottom:20px}
+.rep article{border-top:1px solid #b9b3a0;padding-top:10px;display:grid;gap:4px}
+.rep header{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;justify-content:space-between}
+.rep h4{margin:0;font-size:15px}
+.chip{font-family:var(--f-mono);font-size:11px;padding:2px 8px;border:1.5px solid currentColor;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.c-ok{color:var(--ok)}.c-bad{color:var(--deny)}.c-mid{color:var(--esc)}
+.rep .meta{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft)}
+.rep .src{font-size:13px;background:var(--paper-2);padding:8px 10px}
+.rep .src b{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+/* surface vs. layers */
+.probe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 16px;padding:8px 0;border-top:1px dashed #a9a391;border-bottom:1px dashed #a9a391}
+.plabel{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin-right:4px}
+.pbtn{background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:5px 9px;font-size:12.5px;display:inline-flex;gap:8px;align-items:baseline;text-align:left}
+.pbtn em{font-style:normal;font-family:var(--f-mono);font-size:11px;color:var(--ink-soft)}
+.pbtn:hover:not(:disabled){background:var(--ink);color:var(--paper)}
+.pbtn:hover:not(:disabled) em{color:inherit}
+.pbtn:disabled{border-style:dashed;opacity:.6;cursor:default}
+.lyr{animation:reveal .6s ease-out}
+div.lyr{margin:0 0 12px}
+@keyframes reveal{from{background-color:rgba(231,198,74,.55)}}
+.ltag{font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--esc);margin-bottom:4px}
+.lyr .hdrs{margin:0}
+.mail{display:grid;gap:12px}
+.mail div.lyr{margin:0}
+.mhead{display:flex;gap:12px;align-items:flex-start}
+.ava{width:40px;height:40px;border-radius:50%;background:var(--paper-2);display:grid;place-items:center;font-family:var(--f-mono);font-weight:600;font-size:13px;flex:none}
+.mwho{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}
+.mwho small{color:var(--ink-soft);font-size:12px}
+.mail .att{justify-self:start;margin:0}
+.alert{border:1.5px solid var(--ink);padding:10px 12px;display:grid;gap:4px;margin-bottom:12px}
+.alert b{font-size:15px}
+.sev{justify-self:start;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;background:var(--ink);color:var(--paper)}
+.note{font-family:var(--f-mono);font-size:12.5px;background:var(--paper-2);padding:8px 10px;overflow-wrap:anywhere}
+.callres{margin:0 0 14px;padding:10px 12px;background:rgba(76,122,60,.14);border-left:3px solid var(--ok);font-size:14px;animation:reveal .6s ease-out}
+.callres .ltag{color:var(--ok)}
+.callres .cf{margin-top:6px;font-weight:600}
+@media (max-width:560px){.queue li{flex:0 0 auto;padding:5px 8px}.queue li em{display:none}}
+@media (max-width:1050px){.desk{padding-bottom:200px}.slips{top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
+.rep .key{font-size:13px;border-left:3px solid var(--esc);padding:4px 10px}
+.rep .key b{font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:560px){.paper{padding:18px 16px 22px;transform:none}.hdrs div{grid-template-columns:minmax(0,1fr)}.sheet{padding:20px 18px}.stamp{right:12px;top:12px;font-size:16px}}
+
+/* multi-day additions */
+.quote{border-left:3px solid #b9b3a0;padding:4px 10px;color:var(--ink-soft);font-size:13px}
+.flagmsg{background:rgba(76,122,60,.18);border:1.5px solid var(--ok);padding:8px 10px;font-size:13px;font-weight:600}
+.fakelink{color:#1f4fa8;text-decoration:underline;cursor:pointer}
+.lyr .f[data-k="a.url"]{font-family:var(--f-mono);font-size:12px}
+.warnline{color:#e0675b}
+.new{font-family:var(--f-mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;background:var(--mark);color:#1d1d16;padding:0 5px;margin-left:4px;white-space:nowrap}
+table.mx{border-collapse:collapse;width:100%;font-size:12.5px}
+table.mx th{text-align:left;font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--text-soft);border-bottom:1px solid var(--line);padding:4px 8px 4px 0}
+table.mx td{padding:6px 8px 6px 0;border-bottom:1px dotted var(--line);vertical-align:top}
+table.mx td:first-child{color:var(--paper);font-weight:600}
+.pbtn.locked{border-style:dotted;opacity:.55}
+.sh{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 8px;font-weight:500}
+.news{margin:0 0 6px;padding-left:20px;display:grid;gap:8px;max-width:65ch}
+.news li.good{color:var(--ok)}
+.news li.bad{color:var(--deny)}
+.meta2{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft);margin:14px 0}
+.evening,.final{border-top:2px solid var(--ink);margin-top:8px;padding-top:4px}
+.ups{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:12px 0}
+.up{display:grid;gap:4px;text-align:left;background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:10px 12px;align-content:start}
+.up .upn{font-weight:600;font-size:14px}
+.up .upc{font-family:var(--f-mono);font-size:12px;color:var(--ink-soft)}
+.up .upd{font-size:12.5px;color:var(--ink-soft)}
+.up.on{background:var(--ink);color:var(--paper)}
+.up.on .upc,.up.on .upd{color:inherit;opacity:.85}
+.up:disabled{opacity:.45;cursor:not-allowed}
+.chainbox{border:2px solid currentColor;padding:12px 14px;margin:10px 0 16px;display:grid;gap:6px}
+.chainbox p{color:var(--ink);font-size:13px;margin:0}
+.chainbox.good{color:var(--ok)}.chainbox.mid{color:var(--esc)}.chainbox.bad{color:var(--deny)}
+.chainbox b{font-size:15px}
+.jump{background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:7px 12px;font-family:var(--f-mono);font-size:12px;margin:0 0 16px}
+</style>
+
+<header class="top">
+  <div class="brand"><h1>ПЕРИМЕТР</h1><span id="shiftInfo">SOC · «Северный терминал»</span></div>
+  <div class="meters">
+    <div class="meter clock"><small>Время</small><b id="clock">09:00</b></div>
+    <div class="meter"><small>Обработано</small><b id="mDone">0 / 0</b></div>
+    <div class="meter"><small>Предупреждения</small><b id="mWarn">0</b></div>
+    <div class="meter"><small>Очки</small><b id="mPts">0</b></div>
+    <div class="meter"><small>Лояльность бизнеса</small><b id="mLoy">100</b><div class="bar"><i id="loyBar" style="width:100%"></i></div></div>
+    <button class="pause" id="pauseBtn" type="button">Пауза</button>
+  </div>
+</header>
+
+<main class="desk">
+  <section class="queue" aria-label="Очередь">
+    <p class="label">Очередь</p>
+    <ol id="queue"></ol>
+  </section>
+
+  <section class="slot" aria-live="polite">
+    <article class="paper" id="paper"></article>
+  </section>
+
+  <aside class="binder" aria-label="Справочные материалы">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="t-rules" aria-selected="true" data-tab="rules">Бюллетень</button>
+      <button role="tab" id="t-staff" aria-selected="false" data-tab="staff">Сотрудники</button>
+      <button role="tab" id="t-ext" aria-selected="false" data-tab="ext">Контрагенты и ПО</button>
+      <button role="tab" id="t-acc" aria-selected="false" data-tab="acc" hidden>Доступ</button>
+      <button role="tab" id="t-find" aria-selected="false" data-tab="find">Находки<span class="n" id="findN" hidden>0</span></button>
+    </div>
+    <div class="page" data-page="rules" id="pRules"></div>
+    <div class="page" data-page="staff" id="pStaff" hidden></div>
+    <div class="page" data-page="ext" id="pExt" hidden></div>
+    <div class="page" data-page="acc" id="pAcc" hidden></div>
+    <div class="page" data-page="find" hidden>
+      <h3>Находки по текущему объекту</h3>
+      <div id="findings"></div>
+    </div>
+  </aside>
+</main>
+
+<nav class="actions" aria-label="Действия">
+  <div class="tools">
+    <button class="tool" id="inspectBtn" type="button" aria-pressed="false">🔍 Инспекция</button>
+    <button class="tool" id="callBtn" type="button">☎ Проверить</button>
+  </div>
+  <div class="stamps">
+    <button class="sbtn s-ok" id="bAllow" type="button">ПРОПУСТИТЬ</button>
+    <button class="sbtn s-deny" id="bBlock" type="button">БЛОКИРОВАТЬ</button>
+    <button class="sbtn s-esc" id="bEsc" type="button">ЭСКАЛИРОВАТЬ<small id="escLeft">осталось 4</small></button>
+  </div>
+</nav>
+
+<div class="slips" id="slips" aria-live="assertive"></div>
+
+<div class="ov" id="intro">
+  <div class="sheet">
+    <div class="sub">Приказ о заступлении на дежурство</div>
+    <h2>Добро пожаловать на периметр</h2>
+    <p>Вы дежурный аналитик первой линии SOC в компании «Северный терминал». Впереди три смены. С утра до вечера к вам приходят письма, логи доступа, звонки в helpdesk, заявки и алерты. По каждому объекту нужно принять решение.</p>
+    <p>Половина того, что выглядит подозрительно, окажется легитимным. Блокировать всё подряд не получится: бизнес это заметит. А пропущенное сегодня может вернуться через день.</p>
+    <ol class="how">
+      <li>Прочтите <b>бюллетень</b>: регламенты и текущие угрозы. Каждое утро он пополняется.</li>
+      <li>Объекты приходят в том виде, в каком их видит сотрудник. Кнопки <b>«Изучить»</b> раскрывают адрес, заголовки, журналы, песочницу. Каждый слой стоит минут смены. Верное решение без лишнего изучения даёт бонус.</li>
+      <li><b>Инспекция</b>: кликните по двум полям, которые противоречат друг другу, в объекте, справочнике или регламенте. Найденное противоречие обосновывает решение.</li>
+      <li><b>Проверка по второму каналу</b> (звонок) стоит 30 минут. Некоторые регламенты требуют её обязательно.</li>
+      <li>Поставьте штамп: <b>пропустить</b>, <b>заблокировать</b> или <b>эскалировать</b> на вторую линию. Эскалаций всего 4 за смену.</li>
+      <li>Вечером распределите <b>бюджет отдела</b>: купленные инструменты меняют то, что придёт в следующие смены.</li>
+    </ol>
+    <p>Два предупреждения за смену прощаются. Дальше каждое стоит очков.</p>
+    <button class="go" id="startBtn" type="button">Заступить на смену</button>
+  </div>
+</div>
+
+<div class="ov" id="morning" hidden><div class="sheet" id="morningSheet"></div></div>
+<div class="ov" id="report" hidden><div class="sheet" id="reportSheet"></div></div>
+
+<script>
+/* ============ helpers ============ */
+const L  = (id, title, inner, cls='') => `<div class="lyr ${cls}" data-layer="${id}"><div class="ltag">${title}</div>${inner}</div>`;
+const LI = (id, inner) => `<span class="lyr" data-layer="${id}">${inner}</span>`;
+const F  = (k, t) => `<span class="f" data-k="${k}">${t}</span>`;
+const ATK = best => ({allow:'miss', block: best==='block'?'best':'partial', escalate: best==='escalate'?'best':'ok'});
+const LEG = {allow:'ok', block:'false', escalate:'false'};
+const POL = {allow:'policy', block:'best', escalate:'ok'};
+const MAIL_LAYERS = [
+  {id:'addr', label:'Адрес отправителя', cost:2},
+  {id:'props', label:'Свойства письма', cost:10},
+  {id:'source', label:'Исходный текст', cost:15},
+  {id:'whois', label:'WHOIS и репутация домена', cost:15},
+  {id:'sandbox', label:'Песочница для вложения', cost:45, needs:'sandbox'},
+];
+const NEEDS = {sandbox:'нужна песочница', ti:'нужна TI-подписка'};
+const mailHead = (ini, name, addr, time) => `<div class="mhead"><div class="ava">${ini}</div><div class="mwho"><span><b>${name}</b> ${LI('addr',`&lt;${addr}&gt;`)}</span><small>кому: buh@sevterminal.ru · ${time}</small></div></div>`;
+
+/* ============ days ============ */
+const DAYS = [
+ {date:'02.11.2026', dow:'понедельник', end:1080},
+ {date:'03.11.2026', dow:'вторник', end:1020},
+ {date:'05.11.2026', dow:'четверг', end:1080},
+];
+const RULES = [
+ {day:0, k:'rule.bank', t:'Смена банковских реквизитов контрагента принимается только после звонка по контакту из договора.'},
+ {day:0, k:'rule.mfa', t:'Удалённый доступ (VPN) разрешён только с MFA.'},
+ {day:0, k:'rule.dormant', t:'УЗ, неактивная более 90 дней: вход допускается, только если кадровая система подтверждает, что сотрудник работает.'},
+ {day:0, k:'rule.reset', t:'Сброс или перепривязка MFA выполняются только после обратного звонка на номер из кадровой системы.'},
+ {day:0, k:'rule.hash', t:'Обновление ПО допускается, только если хэш совпадает с опубликованным вендором.'},
+ {day:1, k:'rule.matrix', t:'Доступ выдаётся по матрице ролей. Согласует руководитель, указанный в матрице. Заявитель не может согласовать заявку сам себе.'},
+ {day:1, k:'rule.contractor', t:'Подрядчики получают доступ только при действующем договоре и NDA и только со своих IP-адресов из договора.'},
+ {day:2, k:'rule.lp', t:'До отдельного уведомления письма с домена logplus.ru недоверенные: вложения и ссылки не пропускать, документы принимать через ЭДО.'},
+];
+const THREATS = [
+ {day:0, k:'threat.mfa', t:'Волна MFA-бомбинга: серия отклонённых push-запросов, за которой следует одобрение.'},
+ {day:0, k:'threat.call', t:'Злоумышленники звонят в helpdesk от имени сотрудников, используя данные из соцсетей.'},
+ {day:1, k:'threat.thread', t:'Рассылки ответами в существующую переписку: письмо приходит в знакомую цепочку, но с постороннего адреса, часто с архивом под паролем.'},
+ {day:2, k:'threat.lp', t:'ООО «Логистик Плюс» 04.11 сообщило о взломе своего почтового сервера.'},
+];
+
+/* ============ cases ============ */
+const CASES = [
+/* ---------- DAY 1 ---------- */
+{
+  day:0, id:'lp', type:'Письмо', title:'Изменение банковских реквизитов с 01.12.2026', out:LEG, requiresCall:true, par:0,
+  layers:MAIL_LAYERS,
+  html:`<div class="mail">
+    ${mailHead('ЕК','Елена Кузнецова',`e.kuznetsova@${F('lp.from','logplus.ru')}`,'сегодня, 09:14')}
+    ${L('props','Свойства письма',`<div class="hdrs">
+      <div><span>Reply-To:</span>${F('lp.reply','e.kuznetsova@logplus.ru')}</div>
+      <div><span>Authentication-Results:</span>${F('lp.auth','spf=pass; dkim=pass (d=logplus.ru); dmarc=pass')}</div></div>`)}
+    ${L('source','Исходный текст',`<div class="hdrs"><div><span>Received:</span><span>from mx1.logplus.ru (mx1.logplus.ru [91.215.40.12]) · тот же MX, что в прошлой переписке</span></div></div>`)}
+    ${L('whois','WHOIS и репутация',`<div class="note">logplus.ru · зарегистрирован 14.03.2011 · репутация: чисто</div>`)}
+    <div class="body">
+      <p>Уважаемые коллеги!</p>
+      <p>Сообщаем, что с 01.12.2026 ООО «Логистик Плюс» переходит на обслуживание в другой банк. Счета, выставленные до 30.11, оплачиваются по прежним реквизитам. Уведомление на бланке за подписью генерального директора во вложении, оригинал направлен почтой.</p>
+      <p>С уважением,<br>Елена Кузнецова, главный бухгалтер<br>${F('lp.phone','+7 812 300-45-61')}</p>
+    </div>
+    <span class="att">📎 Uvedomlenie_rekvizity_LP.pdf · 184 КБ</span>
+    ${L('sandbox','Песочница',`<div class="note">PDF, 2 страницы · активного содержимого и ссылок нет · сетевой активности нет</div>`)}
+  </div>`,
+  disc:[],
+  call:{label:'Позвонить Кузнецовой по номеру из договора', text:'Е. Кузнецова: «Да, уведомление наше, оригинал ушёл почтой». Смена реквизитов подтверждена.'},
+  key:'Слои не нужны: регламент требует звонка по контакту из договора, и только звонок решает кейс. Чистые заголовки и WHOIS не доказывают, что реквизиты меняет сам контрагент.',
+  debrief:{label:'Легитимный двойник', name:'Двойник BEC-кейса', text:'Реальные смены реквизитов случаются. Правильная проверка не зависит от того, как выглядит письмо: звонок по контакту из договора, а не из подписи.'}
+},
+{
+  day:0, id:'zay', type:'VPN', title:'Вход под УЗ, неактивной 187 дней', out:LEG, par:5,
+  layers:[{id:'sess',label:'Детали сессии',cost:5},{id:'mfa',label:'Журнал MFA',cost:5},{id:'act',label:'Активность после входа',cost:10}],
+  html:`<div class="alert"><span class="sev">Средний</span><b>Успешный вход по VPN под неактивной УЗ</b><span>o.zaytseva (Зайцева О.) · 02.11.2026 08:52 · последний вход ${F('z.last','29.04.2026')}</span></div>
+    ${L('sess','Детали сессии',`<div class="scroll"><table class="log">
+      <tr><td>Источник</td><td>95.165.118.44 · домашний провайдер, Москва</td></tr>
+      <tr><td>Устройство</td><td>LT-0412 · корпоративный ноутбук, есть в CMDB</td></tr>
+      <tr><td>Шлюз</td><td>vpn-main (актуальный профиль)</td></tr></table></div>`)}
+    ${L('mfa','Журнал MFA',`<div class="note">${F('z.mfa','08:52 · push · одобрен с зарегистрированного устройства')}</div>`)}
+    ${L('act','Активность после входа',`<div class="note">Почта, 1С: Бухгалтерия, сетевая папка \\\\fs01\\buh</div>`)}`,
+  disc:[],
+  call:{label:'Позвонить главному бухгалтеру', text:'Т. Ковалёва: «Ольга сегодня вышла, всё верно, это она».'},
+  key:'Справочник сотрудников и слой «Журнал MFA». Кадровая система подтверждает выход, MFA пройдена, значит регламент вход разрешает.',
+  debrief:{label:'Легитимный двойник', name:'Двойник кейса Colonial Pipeline', text:'Неактивная УЗ сама по себе не атака. Решают MFA, корпоративное устройство и подтверждение кадровой службы.'}
+},
+{
+  day:0, id:'bec', type:'Письмо', title:'СРОЧНО: смена реквизитов, оплата счёта № 1187 до конца дня', malicious:true, out:ATK('block'), par:0,
+  layers:MAIL_LAYERS,
+  html:`<div class="mail">
+    ${mailHead('ТС','ООО ТехСнаб — бухгалтерия',`buh@${F('bec.from','tehsnab-pay.ru')}`,'сегодня, 10:02')}
+    ${L('props','Свойства письма',`<div class="hdrs">
+      <div><span>Reply-To:</span>${F('bec.reply','tehsnab.buh@gmail.com')}</div>
+      <div><span>Authentication-Results:</span>${F('bec.auth','spf=pass (smtp.mailfrom=tehsnab-pay.ru); dkim=none; dmarc=none')}</div></div>`)}
+    ${L('source','Исходный текст',`<div class="hdrs"><div><span>Received:</span><span>from mail.tehsnab-pay.ru ([45.137.21.9]) · VPS-хостинг</span></div></div>`)}
+    ${L('whois','WHOIS и репутация',`<div class="note">${F('bec.whois','tehsnab-pay.ru · зарегистрирован 27.10.2026, 6 дней назад')} · в TI упоминаний нет</div>`)}
+    <div class="body">
+      <p>Добрый день!</p>
+      <p>В связи с проверкой наш расчётный счёт временно заблокирован. Просим оплату по счёту № 1187 на сумму 4 860 000 ₽ провести сегодня до 17:00 по новым реквизитам во вложении. Задержка оплаты приведёт к остановке отгрузок.</p>
+      <p>По всем вопросам звоните мне напрямую.<br>Сергей Павлов, бухгалтерия<br>${F('bec.phone','+7 499 113-08-52')}</p>
+    </div>
+    <span class="att">📎 Novye_rekvizity_schet_1187.pdf · 96 КБ</span>
+    ${L('sandbox','Песочница',`<div class="note">PDF, 1 страница: таблица реквизитов · активного содержимого и ссылок нет · сетевой активности нет</div>`)}
+  </div>`,
+  disc:[
+    ['bec.phone','ref.ts.phone','Телефон в подписи не совпадает с телефоном из договора'],
+    ['bec.from','ref.ts.domain','Домен отправителя не совпадает с доменом контрагента по договору'],
+    ['bec.whois','ref.ts.domain','Домен зарегистрирован неделю назад и не совпадает с доменом из договора'],
+    ['bec.from','bec.reply','Ответы уходят на сторонний ящик: Reply-To не совпадает с From'],
+    ['bec.reply','ref.ts.domain','Ответы уходят на сторонний ящик: Reply-To не совпадает с From'],
+  ],
+  call:{label:'Позвонить Павлову по номеру из договора', text:'С. Павлов: «Реквизиты не менялись, никаких писем мы не отправляли».', finding:'Контрагент не подтвердил смену реквизитов'},
+  key:'Поверхность: телефон в подписи не совпадает со справочником контрагентов. Песочница здесь бесполезна: в BEC нет вредоноса, атака целиком в тексте.',
+  debrief:{name:'Дело Римасаускаса против Google и Facebook (2013–2015)', text:'Эвалдас Римасаускас выдавал себя за тайваньского производителя Quanta Computer и отправлял двум компаниям поддельные счета от похожей на настоящую фирмы. Они перевели ему более 100 млн долларов. В 2019 году он получил 5 лет заключения.'}
+},
+{
+  day:0, id:'iv', type:'Звонок', title:'Перепривязка MFA: командировка, разбитый телефон', out:LEG, requiresCall:true, par:0,
+  layers:[{id:'pbx',label:'Номер по данным АТС',cost:5}],
+  html:`<div class="hdrs"><div><span>Линия:</span><span>helpdesk 1100 · 11:05</span></div>
+    ${LI('pbx',`<div><span>Входящий (АТС):</span>${F('iv.num','+7 916 555-10-20')}</div>`)}</div>
+  <div class="transcript">
+    <p><b>ЗВОНЯЩИЙ</b>Добрый день, это Пётр Иванов из ИТ. Я в командировке в Казани, телефон разбил, сим-карту переставил в новый. Нужно перепривязать MFA.</p>
+    <p><b>HELPDESK</b>Назовите табельный номер.</p>
+    <p><b>ЗВОНЯЩИЙ</b>${F('iv.tab','0417')}. Если нужно, перезвоните, я на связи весь день.</p>
+  </div>
+  <div class="ticket">Тикет SD-55102 · «Перепривязка MFA» · руководитель в копии</div>`,
+  disc:[],
+  call:{label:'Перезвонить на номер из кадровой системы', text:'П. Иванов отвечает и подтверждает запрос. Руководитель подтвердил в тикете.'},
+  key:'Регламент требует обратного звонка на номер из кадровой системы. Номер по АТС совпадает, но звонок не заменяет: номер можно подменить.',
+  debrief:{label:'Легитимный двойник', name:'Двойник кейса MGM Resorts', text:'Такой же сценарий «потерял телефон», но номер совпадает с кадровой системой, сотрудник спокойно ждёт обратного звонка, а звонок подтверждает личность.'}
+},
+{
+  day:0, id:'bel', type:'VPN', title:'Ночной вход по VPN', malicious:true, out:ATK('escalate'), par:0,
+  layers:[{id:'sess',label:'Детали сессии',cost:5},{id:'mfa',label:'Журнал MFA',cost:5},{id:'ad',label:'Атрибуты УЗ в AD',cost:5},{id:'act',label:'Активность после входа',cost:10}],
+  html:`<div class="alert"><span class="sev">Низкий</span><b>Успешный вход по VPN</b><span>${F('b.user','a.belov (Белов А.)')} · 02.11.2026 03:12</span></div>
+    ${L('sess','Детали сессии',`<div class="scroll"><table class="log">
+      <tr><td>Источник</td><td>185.220.101.47 · хостинг, Нидерланды</td></tr>
+      <tr><td>Устройство</td><td>DESKTOP-K0TR1 · нет в CMDB</td></tr>
+      <tr><td>Шлюз</td><td>old-gw (устаревший VPN-профиль)</td></tr></table></div>`)}
+    ${L('mfa','Журнал MFA',`<div class="note">${F('b.mfa','MFA для УЗ не настроена')}</div>`)}
+    ${L('ad','Атрибуты УЗ в AD',`<div class="note">${F('b.ad','Учётная запись активна')} · последний вход ${F('b.last','11.02.2026')}</div>`)}
+    ${L('act','Активность после входа',`<div class="note">${F('b.smb','03:14–03:40 · SMB-подключения к 14 серверам')}</div>`)}`,
+  disc:[
+    ['b.user','ref.belov.status','Под УЗ уволенного сотрудника выполнен вход'],
+    ['b.ad','ref.belov.status','УЗ уволенного сотрудника не отключена и используется'],
+    ['b.last','ref.belov.status','УЗ уволенного сотрудника не отключена и используется'],
+    ['b.mfa','rule.mfa','Удалённый вход без MFA нарушает политику'],
+    ['b.last','rule.dormant','УЗ неактивна больше 90 дней, а кадровая система не подтверждает работу сотрудника'],
+  ],
+  call:{label:'Позвонить руководителю ИТ', text:'А. Соколов: «Белов уволен в марте. Под его УЗ никто работать не должен».', finding:'Руководитель ИТ подтвердил: УЗ не должна использоваться'},
+  key:'Поверхность и справочник сотрудников: вход под УЗ уволенного. Слой «Активность после входа» показывает, что атакующий уже ходит по серверам, поэтому нужна эскалация.',
+  partialNote:'Доступ остановлен, но расследование не начато: атакующий уже успел действовать внутри.',
+  debrief:{name:'Colonial Pipeline (2021)', text:'Группа DarkSide вошла через VPN под учётной записью, которой давно не пользовались. MFA на ней не было, пароль, по всей видимости, утёк раньше. Компания на несколько дней остановила трубопровод и заплатила выкуп около 4,4 млн долларов.'}
+},
+{
+  day:0, id:'df', type:'EDR', title:'Новый исполняемый файл на хостах бухгалтерии', out:LEG, par:10,
+  layers:[{id:'file',label:'Сведения о файле',cost:10},{id:'net',label:'Сетевая активность',cost:10}],
+  html:`<div class="alert"><span class="sev">Низкий</span><b>Запуск нового исполняемого файла</b><span>docflow_setup_8.1.3.exe · WS-BUH-07, WS-BUH-08, WS-BUH-11</span></div>
+    ${L('file','Сведения о файле',`<div class="scroll"><table class="log">
+      <tr><td>Подпись</td><td>DocFlow Systems · валидна</td></tr>
+      <tr><td>SHA-256</td><td>${F('df.hash','4c1d9a07…e72b')}</td></tr>
+      <tr><td>Загружен с</td><td>${F('df.src','updates.docflow.ru')}</td></tr></table></div>`)}
+    ${L('net','Сетевая активность',`<div class="note">После установки: updates.docflow.ru, license.docflow.ru</div>`)}
+    <div class="ticket">Заявка на изменение CHG-2231 · «Плановое обновление DocFlow в бухгалтерии» · согласована</div>`,
+  disc:[],
+  call:{label:'Уточнить у администраторов', text:'Админы: «Плановое обновление по CHG-2231, раскатываем на бухгалтерию».'},
+  key:'Слой «Сведения о файле»: регламент допускает обновление, только если хэш совпадает с опубликованным вендором. Заявки на изменение для этого мало.',
+  debrief:{label:'Легитимный двойник', name:'Двойник кейса 3CX', text:'Обновление с совпадающим хэшем, сетевыми обращениями только к доменам вендора и согласованной заявкой на изменение.'}
+},
+{
+  day:0, id:'sm', type:'Звонок', title:'Срочный сброс MFA: «я на совещании у генерального»', malicious:true, out:ATK('block'), par:0,
+  layers:[{id:'pbx',label:'Номер по данным АТС',cost:5}],
+  html:`<div class="hdrs"><div><span>Линия:</span><span>helpdesk 1100 · 14:20</span></div>
+    ${LI('pbx',`<div><span>Входящий (АТС):</span>${F('sm.num','+7 966 041-77-35')}</div>`)}</div>
+  <div class="transcript">
+    <p><b>ЗВОНЯЩАЯ</b>Здравствуйте, Анна Смирнова, финансы. Я потеряла телефон, а мне прямо сейчас нужно войти. ${F('sm.where','Я на совещании у генерального в переговорной')}, он ждёт отчёт.</p>
+    <p><b>HELPDESK</b>Назовите табельный номер.</p>
+    <p><b>ЗВОНЯЩАЯ</b>${F('sm.tab','Не помню, честно. Мой руководитель Громов, можете у него спросить.')} Пожалуйста, побыстрее, привяжите MFA к этому номеру.</p>
+  </div>
+  <div class="ticket">Тикет SD-55117 · «Сброс MFA» · отметка: «срочно, ждёт генеральный»</div>`,
+  disc:[
+    ['sm.where','ref.smirnova.status','Сотрудница в отпуске, а звонящая говорит, что сидит на совещании в офисе'],
+    ['sm.tab','ref.smirnova.status','Звонящая не знает табельный номер, а сотрудница по кадровой системе в отпуске'],
+    ['sm.num','ref.smirnova.phone','Номер звонящей не совпадает с номером в кадровой системе'],
+    ['sm.where','threat.call','Давление и срочность по сценарию из бюллетеня угроз'],
+  ],
+  call:{label:'Перезвонить на номер из кадровой системы', text:'А. Смирнова: «Я в отпуске, в helpdesk не звонила, телефон у меня».', finding:'Настоящая сотрудница не звонила'},
+  key:'Поверхность: звонящая «в офисе», а по кадровой системе сотрудница в отпуске. Номер АТС только подтверждает подозрение.',
+  debrief:{name:'MGM Resorts (2023)', text:'Участники Scattered Spider нашли сотрудника в LinkedIn и позвонили в службу поддержки от его имени. Разговор занял около 10 минут. Дальше было шифрование инфраструктуры с помощью ALPHV/BlackCat; MGM оценила ущерб примерно в 100 млн долларов. Источник: CISA AA23-320A.'}
+},
+{
+  day:0, id:'koz', type:'MFA', title:'Аномалия MFA ночью', malicious:true, out:ATK('escalate'), par:10,
+  layers:[{id:'idp',label:'Журнал IdP',cost:10},{id:'sess',label:'Сессия после входа',cost:10}],
+  html:`<div class="alert"><span class="sev">Средний</span><b>Аномальное число запросов MFA</b><span>d.kozlov (Козлов Д.) · 01:10–01:49 · push</span></div>
+    ${L('idp','Журнал IdP',`<div class="scroll"><table class="log">
+      <tr><td>01:10–01:47</td><td>${F('k.denied','Push MFA для d.kozlov · ОТКЛОНЁН × 23')}</td></tr>
+      <tr><td>01:49</td><td>${F('k.approved','Push MFA для d.kozlov · ОДОБРЕН')}</td></tr>
+      <tr><td>01:51</td><td>Вход с нового устройства DESKTOP-7Q2LM · 104.28.62.19</td></tr></table></div>`)}
+    ${L('sess','Сессия после входа',`<div class="scroll"><table class="log">
+      <tr><td>01:58</td><td>${F('k.share','Чтение \\\\fs01\\IT\\scripts\\pam_sync.ps1')}</td></tr>
+      <tr><td>02:03</td><td>Вход в консоль PAM под УЗ svc_pam_admin</td></tr></table></div>`)}`,
+  disc:[
+    ['k.denied','k.approved','После серии отказов — одобрение: признак MFA-бомбинга'],
+    ['k.denied','threat.mfa','После серии отказов — одобрение: признак MFA-бомбинга'],
+    ['k.approved','threat.mfa','После серии отказов — одобрение: признак MFA-бомбинга'],
+    ['k.share','ref.kozlov.dept','Сотрудник отдела продаж читает скрипты ИТ-отдела'],
+  ],
+  call:{label:'Позвонить Козлову по номеру из кадровой системы', text:'Д. Козлов (сонно): «Всю ночь сыпались уведомления, потом в Telegram написала "ИТ-поддержка" с номера +7 977 302-15-48, и я подтвердил».', finding:'«ИТ-поддержка» писала сотруднику с внешнего номера в мессенджер, а ИТ так не делает'},
+  key:'Слой «Журнал IdP» показывает MFA-бомбинг. Слой «Сессия после входа» показывает, что атакующий уже добрался до PAM, поэтому нужна эскалация.',
+  partialNote:'Сессия остановлена, но атакующий уже прочитал учётные данные PAM: без расследования их не сменят.',
+  debrief:{name:'Uber (2022)', text:'Атакующий, связанный с Lapsus$, купил пароль подрядчика, засыпал его push-запросами MFA и написал в WhatsApp от имени ИТ-поддержки Uber. После одобрения он нашёл в сетевой папке PowerShell-скрипт с учётными данными администратора PAM.'}
+},
+{
+  day:0, id:'nw', type:'EDR', title:'Подозрительная сетевая активность на сервере мониторинга', malicious:true, out:ATK('escalate'), par:10,
+  layers:[{id:'proc',label:'Процесс и подпись',cost:10},{id:'net',label:'Сетевая активность',cost:10},{id:'ti',label:'TI по домену',cost:15,needs:'ti'}],
+  html:`<div class="alert"><span class="sev">Высокий</span><b>Подозрительная сетевая активность</b><span>netwatch.exe · MON-01 · NetWatch Monitor 5.2.1, обновлён 19.10</span></div>
+    ${L('proc','Процесс и подпись',`<div class="scroll"><table class="log">
+      <tr><td>Подпись</td><td>${F('nw.sig','NetWatch Ltd · валидна')}</td></tr>
+      <tr><td>SHA-256 NetWatch.Core.dll</td><td>${F('nw.hash','7b1e04c2…09cd')}</td></tr></table></div>`)}
+    ${L('net','Сетевая активность',`<div class="scroll"><table class="log">
+      <tr><td>Загрузка</td><td>${F('nw.ico','raw.githubusercontent.com/…/icon_14.ico')}</td></tr>
+      <tr><td>DNS, раз в 60 минут</td><td>${F('nw.dns','k3f9a0q2m7.appsync-cdn.net')}</td></tr></table></div>`)}
+    ${L('ti','TI по домену',`<div class="note">${F('nw.ti','appsync-cdn.net · зарегистрирован 12.10.2026 · за CDN · в TI упоминаний нет')}</div>`)}
+    <div class="ticket">${F('nw.ticket','Тикет от администраторов: «Это ложное срабатывание, мониторинг встал. Добавьте netwatch.exe в исключения EDR, срочно».')}</div>`,
+  disc:[
+    ['nw.hash','ref.nw.hash','Хэш библиотеки не совпадает с опубликованным вендором, хотя подпись валидна'],
+    ['nw.hash','rule.hash','Хэш библиотеки не совпадает с опубликованным вендором, хотя подпись валидна'],
+    ['nw.dns','ref.nw.dom','Процесс обращается к домену, не принадлежащему вендору'],
+    ['nw.ti','ref.nw.dom','Процесс обращается к свежему домену, не принадлежащему вендору'],
+    ['nw.ico','ref.nw.dom','Процесс скачивает файлы с GitHub, а не с доменов вендора'],
+  ],
+  call:{label:'Позвонить в поддержку NetWatch (номер с сайта вендора)', text:'Поддержка NetWatch: «Хэш 7b1e… нам неизвестен. Не используйте эту сборку, проверяем».', finding:'Вендор не подтверждает хэш сборки'},
+  key:'Слой «Процесс и подпись»: подпись валидна, но хэш не совпадает с опубликованным вендором. TI по домену уже лишний: противоречия хватает.',
+  partialNote:'Процесс остановлен, но сервер мониторинга видит всю сеть: без расследования неясно, что атакующий успел сделать.',
+  debrief:{name:'3CX (2023)', text:'Подписанное десктоп-приложение 3CX было троянизировано через цепочку поставок. Оно скачивало с GitHub файлы иконок со спрятанными адресами серверов управления. EDR начали срабатывать раньше официального признания, и многие клиенты считали это ложными срабатываниями.'}
+},
+
+/* ---------- DAY 2 ---------- */
+{
+  day:1, id:'a1', type:'Доступ', title:'Доступ к 1С:Бухгалтерия для Зайцевой', out:LEG, par:5,
+  layers:[{id:'appr',label:'История согласований',cost:5},{id:'rights',label:'Текущие права',cost:5}],
+  html:`<div class="alert"><span class="sev">Заявка</span><b>SD-55130 · Предоставление доступа</b><span>Заявитель: Зайцева О. · Система: 1С:Бухгалтерия · Роль: ${F('a1.role','Бухгалтер (пользователь)')} · Статус: согласовано</span></div>
+    ${L('appr','История согласований',`<div class="note">${F('a1.appr','03.11 09:20 · согласовано: Ковалёва Т., главный бухгалтер')}</div>`)}
+    ${L('rights','Текущие права',`<div class="note">Почта, VPN, сетевая папка \\\\fs01\\buh</div>`)}`,
+  disc:[],
+  call:{label:'Позвонить главному бухгалтеру', text:'Т. Ковалёва: «Да, согласовала, Ольге нужна 1С для закрытия месяца».'},
+  key:'Слой «История согласований» и матрица доступа: роль «Бухгалтер» согласует главный бухгалтер, так и есть.',
+  debrief:{label:'Рутина', name:'Обычная заявка', text:'Большинство заявок на доступ — рутина. Проверка занимает минуту: роль по матрице, правильный согласующий, разумный объём прав.'}
+},
+{
+  day:1, id:'lp2', type:'Письмо', title:'Re: Акт сверки за октябрь', out:LEG, par:2,
+  layers:MAIL_LAYERS,
+  html:`<div class="mail">
+    ${mailHead('ЕК','Елена Кузнецова',`e.kuznetsova@${F('lp2.from','logplus.ru')}`,'сегодня, 09:40')}
+    ${L('props','Свойства письма',`<div class="hdrs"><div><span>Authentication-Results:</span><span>spf=pass; dkim=pass (d=logplus.ru); dmarc=pass</span></div></div>`)}
+    ${L('source','Исходный текст',`<div class="hdrs"><div><span>Received:</span><span>from mx1.logplus.ru (mx1.logplus.ru [91.215.40.12])</span></div></div>`)}
+    ${L('whois','WHOIS и репутация',`<div class="note">logplus.ru · зарегистрирован 14.03.2011 · репутация: чисто</div>`)}
+    <div class="body">
+      <p>Добрый день!</p>
+      <p>Акт сверки за октябрь во вложении. Если будут расхождения, напишите.</p>
+      <p>Елена Кузнецова<br>+7 812 300-45-61</p>
+    </div>
+    <div class="quote">От: buh@sevterminal.ru · 28.10.2026<br>Елена, добрый день! Пришлите, пожалуйста, акт сверки за октябрь.</div>
+    <span class="att">📎 Akt_sverki_oktyabr_2026.pdf · 212 КБ</span>
+    ${L('sandbox','Песочница',`<div class="note">PDF, 3 страницы · активного содержимого и ссылок нет</div>`)}
+  </div>`,
+  disc:[],
+  call:{label:'Позвонить Кузнецовой по номеру из договора', text:'Е. Кузнецова: «Да, акт отправила утром».'},
+  key:'Слой «Адрес отправителя»: письмо пришло с домена контрагента из договора. Реквизиты не меняются, вложение — обычный PDF.',
+  debrief:{label:'Легитимный двойник', name:'Двойник кейса Qakbot', text:'Настоящий ответ в переписку: тот же адрес, что в договоре, обычный PDF, без пароля и срочности.'}
+},
+{
+  day:1, id:'ceo', type:'Доступ', title:'Срочно: выгрузка базы клиентов для подрядчика', policy:true, out:POL, par:5,
+  loyCost:{block:10}, fx:{allow:{crm:'leaked'}, block:{crm:'blocked'}, escalate:{crm:'escalated'}},
+  layers:[{id:'appr',label:'История согласований',cost:5},{id:'vendor',label:'Сведения о получателе',cost:5}],
+  html:`<div class="alert"><span class="sev">Заявка</span><b>SD-55136 · Выгрузка данных из CRM</b><span>Заявитель: Орлова М., помощник генерального директора · Получатель: ООО «Маркетинг-Лаб» · Объём: ${F('c.vol','вся база клиентов, 48 тыс. записей с ФИО и телефонами')}</span></div>
+    ${L('appr','История согласований',`<div class="note">${F('c.appr','Согласовано: Орлова М. (заявитель)')} · владелец CRM: не согласовано · ИБ: не согласовано</div>`)}
+    ${L('vendor','Сведения о получателе',`<div class="note">${F('c.vendor','ООО «Маркетинг-Лаб»: в реестре контрагентов нет, договора и NDA нет')}</div>`)}
+    <div class="ticket">Комментарий: «По поручению генерального. Нужно сегодня до обеда, рассылка стартует завтра. Генеральный в курсе и ждёт». — Орлова М.</div>`,
+  disc:[
+    ['c.appr','rule.matrix','Заявитель согласовал заявку сам себе'],
+    ['c.appr','ref.m.export','Выгрузку из CRM должны согласовать коммерческий директор и ИБ'],
+    ['c.vol','ref.m.export','Массовая выгрузка ПДн без согласования владельца CRM и ИБ'],
+    ['c.vendor','rule.contractor','Получатель без договора и NDA'],
+  ],
+  call:{label:'Позвонить коммерческому директору (владельцу CRM)', text:'И. Фролова: «Впервые слышу. Без договора никаких выгрузок. Генеральному я сама объясню, но он будет недоволен».', finding:'Владелец CRM выгрузку не согласовывал'},
+  key:'Слой «История согласований» и матрица доступа: заявитель согласовал сам себе, владелец CRM и ИБ не участвовали. Давление руководства регламент не отменяет.',
+  debrief:{label:'Ситуация из практики', name:'Давление руководства', text:'Срочная выгрузка «по поручению первого лица» подрядчику без договора — частый путь утечек персональных данных. Отказ портит отношения с приёмной, согласие делает вас соучастником утечки. Эскалация переносит решение на уровень, где его вправе принять.'}
+},
+{
+  day:1, id:'qak', type:'Письмо', title:'Re: Акт сверки за октябрь', malicious:true, chain:true, par:2,
+  out:{allow:'miss', block:'ok', escalate:'best'},
+  fx:{allow:{chain:'foothold'}, block:{chain:'blocked'}, escalate:{chain:'contained'}},
+  layers:MAIL_LAYERS,
+  html:`<div class="mail">
+    ${mailHead('ЕК','Елена Кузнецова',F('q.from','e.kuznetsova@vinoteca-sol.es'),'сегодня, 11:52')}
+    ${L('props','Свойства письма',`<div class="hdrs">
+      <div><span>Reply-To:</span><span>e.kuznetsova@vinoteca-sol.es</span></div>
+      <div><span>Authentication-Results:</span>${F('q.auth','spf=pass; dkim=pass (d=vinoteca-sol.es); dmarc=pass')}</div></div>`)}
+    ${L('source','Исходный текст',`<div class="hdrs"><div><span>Received:</span><span>from mail.vinoteca-sol.es ([88.27.141.6]) · Испания, сайт винного магазина</span></div></div>`)}
+    ${L('whois','WHOIS и репутация',`<div class="note">vinoteca-sol.es · зарегистрирован в 2014 · репутация: чисто, 2 жалобы на рассылку за сутки</div>`)}
+    <div class="body">
+      <p>Добрый день!</p>
+      <p>В первой версии акта ошибка в сумме, исправленный во вложении. Архив под паролем, как обычно: ${F('q.pass','2611')}.</p>
+      <p>Елена Кузнецова</p>
+    </div>
+    <div class="quote">От: Елена Кузнецова · сегодня, 09:40<br>Добрый день! Акт сверки за октябрь во вложении. Если будут расхождения, напишите.<br><br>От: buh@sevterminal.ru · 28.10.2026<br>Елена, добрый день! Пришлите, пожалуйста, акт сверки за октябрь.</div>
+    <span class="att">📎 ${F('q.zip','Akt_sverki_ispr.zip · 2,1 МБ · защищён паролем')}</span>
+    ${L('sandbox','Песочница',`<div class="note">ZIP → Akt_sverki_ispr.lnk → cmd.exe → curl загружает DLL с 194.165.16.77 → rundll32.exe · выход в сеть каждые 5 минут</div>`)}
+  </div>`,
+  disc:[
+    ['q.from','ref.lp.domain','Имя Кузнецовой, но письмо пришло с чужого домена'],
+    ['q.from','threat.thread','Ответ в существующую переписку с постороннего адреса'],
+    ['q.zip','threat.thread','Архив под паролем в ответе на переписку'],
+    ['q.pass','threat.thread','Архив под паролем в ответе на переписку'],
+  ],
+  call:{label:'Позвонить Кузнецовой по номеру из договора', text:'Е. Кузнецова: «После утреннего письма я ничего не отправляла. Архивы с паролем мы не присылаем».', finding:'Кузнецова не отправляла это письмо'},
+  key:'Слой «Адрес отправителя»: имя Кузнецовой, а домен чужой. SPF и DKIM проходят, потому что письмо отправлено с настоящего взломанного сервера. Эскалация лучше блокировки: такие письма приходят сразу многим.',
+  partialNote:'',
+  debrief:{label:'Шаг 1 сквозной атаки', name:'Qakbot: ответ в переписку', text:'Qakbot в 2022–2023 годах рассылался ответами в настоящие цепочки писем, украденные у прежних жертв. Отправителем был посторонний взломанный ящик, вложением — архив с паролем, внутри — ярлык, загружающий DLL. Чем это обернётся, покажут следующие смены.'}
+},
+{
+  day:1, id:'snow', type:'Облако', title:'Вход в облачную CRM под УЗ подрядчика', malicious:true, chain:true, out:ATK('escalate'), par:5,
+  fx:{allow:{snow:'missed'}, block:{snow:'blocked'}, escalate:{snow:'escalated'}},
+  layers:[{id:'sess',label:'Детали сессии',cost:5},{id:'act',label:'Активность в CRM',cost:10},{id:'ti',label:'TI по учётным данным',cost:5,needs:'ti'}],
+  html:`<div class="alert"><span class="sev">Средний</span><b>Вход в облачную CRM</b><span>ds.support (ДатаСервис, подрядчик) · 03.11 13:10 · пароль, MFA не настроена</span></div>
+    ${L('sess','Детали сессии',`<div class="scroll"><table class="log">
+      <tr><td>IP</td><td>${F('s.ip','45.86.162.19 · VPS-хостинг, Нидерланды')}</td></tr>
+      <tr><td>Клиент</td><td>DBeaver 23.2 · прямое подключение к базе</td></tr></table></div>`)}
+    ${L('act','Активность в CRM',`<div class="note">${F('s.exp','13:12–13:31 · выгрузка таблиц clients, contracts, payments · 1,8 ГБ')}</div>`)}
+    ${L('ti','TI по учётным данным',`<div class="note">${F('s.ti','ds.support@datas-it.ru найден в логах инфостилера Lumma от 21.10')}</div>`)}`,
+  disc:[
+    ['s.ip','ref.ds.ip','Вход не с IP-адресов подрядчика из договора'],
+    ['s.ip','rule.contractor','Вход не с IP-адресов подрядчика из договора'],
+    ['s.exp','ref.m.export','Массовая выгрузка без согласования владельца CRM'],
+    ['s.ti','s.ip','Пароль утёк через инфостилер, вход с постороннего VPS'],
+  ],
+  call:{label:'Позвонить в ДатаСервис по номеру из договора', text:'ДатаСервис: «Сегодня в вашу CRM никто из наших не заходил. Сейчас сменим пароль».', finding:'Подрядчик не входил в CRM'},
+  key:'Слой «Детали сессии» и справочник контрагентов: вход не с IP подрядчика. Слой «Активность» показывает, что данные уже ушли. Это утечка ПДн, поэтому нужна эскалация.',
+  partialNote:'УЗ заблокирована, но 1,8 ГБ уже выгружено, а расследование не начато.',
+  debrief:{name:'Snowflake (2024)', text:'Группа UNC5537 входила в клиентские учётные записи Snowflake с паролями из логов инфостилеров. На этих УЗ не было MFA и ограничений по IP. Пострадали около 165 организаций, в том числе AT&T и Ticketmaster.'}
+},
+{
+  day:1, id:'ds', type:'Доступ', title:'Продление доступа подрядчика ДатаСервис к CRM', out:LEG, par:10,
+  layers:[{id:'appr',label:'История согласований',cost:5},{id:'vendor',label:'Сведения о подрядчике',cost:5}],
+  html:`<div class="alert"><span class="sev">Заявка</span><b>SD-55141 · Продление доступа</b><span>Подрядчик: ДатаСервис, Аксёнов В. · Система: CRM (поддержка) · Срок: до ${F('d.term','31.12.2026')}</span></div>
+    ${L('appr','История согласований',`<div class="note">Согласовано: Фролова И., коммерческий директор (владелец CRM) · 03.11 14:02</div>`)}
+    ${L('vendor','Сведения о подрядчике',`<div class="note">Договор № 31/26 до 31.12.2026 · NDA № 12/26 действует · вход только с 212.48.10.0/24 · MFA включена</div>`)}`,
+  disc:[],
+  call:{label:'Позвонить коммерческому директору', text:'И. Фролова: «Да, продлеваем до конца договора».'},
+  key:'Слои «История согласований» и «Сведения о подрядчике»: согласовал владелец системы, NDA действует, срок не дольше договора. Компрометация другой УЗ того же подрядчика регламент не отменяет.',
+  debrief:{label:'Легитимный двойник', name:'Двойник кейса Snowflake', text:'Доступ подрядчика сам по себе не угроза. Угроза — доступ без MFA, без ограничений по IP и без срока.'}
+},
+{
+  day:1, id:'scan', type:'IDS', title:'Сканирование портов во внутренней сети', out:LEG, par:0,
+  layers:[{id:'src',label:'Источник',cost:5},{id:'chg',label:'Заявки на изменение',cost:5}],
+  html:`<div class="alert"><span class="sev">Высокий</span><b>Сканирование портов</b><span>Источник ${F('sc.ip','10.0.5.20')} → 10.0.0.0/16 · 1 480 хостов · начало ${F('sc.time','03.11 10:30')}</span></div>
+    ${L('src','Источник',`<div class="note">SEC-SCAN-01 · сканер уязвимостей · УЗ svc_scan</div>`)}
+    ${L('chg','Заявки на изменение',`<div class="note">CHG-2240 · плановое сканирование · окно: вт и чт 10:00–13:00 · согласовано</div>`)}`,
+  disc:[],
+  call:{label:'Уточнить у администраторов', text:'Админы: «Это наш плановый скан, до часа дня закончит».'},
+  key:'Поверхность и справочник ПО: адрес сканера и окно сканирования совпадают.',
+  debrief:{label:'Ложное срабатывание', name:'Плановое сканирование', text:'Самые громкие алерты часто легитимны. Отличить легко, если в справочнике есть адреса и окна работы своих сканеров.'}
+},
+
+/* ---------- DAY 3 ---------- */
+{
+  day:2, id:'lp3', type:'Письмо', title:'Счёт № 3391 за октябрь', policy:true, out:POL, par:0,
+  layers:MAIL_LAYERS,
+  html:`<div class="mail">
+    ${mailHead('ЕК','Елена Кузнецова',`e.kuznetsova@${F('l.from','logplus.ru')}`,'сегодня, 09:25')}
+    ${L('props','Свойства письма',`<div class="hdrs"><div><span>Authentication-Results:</span><span>spf=pass; dkim=pass (d=logplus.ru); dmarc=pass</span></div></div>`)}
+    ${L('source','Исходный текст',`<div class="hdrs"><div><span>Received:</span><span>from mx1.logplus.ru (mx1.logplus.ru [91.215.40.12])</span></div></div>`)}
+    ${L('whois','WHOIS и репутация',`<div class="note">logplus.ru · зарегистрирован 14.03.2011 · с 04.11 в фидах: «скомпрометированный почтовый сервер»</div>`)}
+    <div class="body"><p>Добрый день!</p><p>Счёт за октябрь во вложении, реквизиты прежние.</p><p>Елена Кузнецова<br>+7 812 300-45-61</p></div>
+    <span class="att">📎 Schet_3391.pdf · 140 КБ</span>
+    ${L('sandbox','Песочница',`<div class="note">PDF, 1 страница · активного содержимого и ссылок нет</div>`)}
+  </div>`,
+  disc:[
+    ['l.from','rule.lp','Письмо с домена logplus.ru, который сегодня недоверенный'],
+    ['l.from','ref.lp.status','Письмо с домена logplus.ru, который сегодня недоверенный'],
+  ],
+  call:{label:'Позвонить Кузнецовой по номеру из договора', text:'Е. Кузнецова: «Счёт наш, но почту нам ещё чистят. Продублируем через ЭДО».'},
+  key:'Бюллетень: домен logplus.ru временно недоверенный. Письмо может быть настоящим, но регламент требует не пропускать вложение и получить счёт через ЭДО.',
+  debrief:{label:'Временное правило', name:'Компрометация почты контрагента', text:'После взлома почты контрагента злоумышленник может писать с его настоящего домена, и проверки подлинности пройдут. Пока контрагент не подтвердил очистку, документы принимают только через ЭДО.'}
+},
+{
+  day:2, id:'kzn', type:'VPN', title:'Вход по VPN из нового города', out:LEG, par:0,
+  layers:[{id:'sess',label:'Детали сессии',cost:5},{id:'mfa',label:'Журнал MFA',cost:5}],
+  html:`<div class="alert"><span class="sev">Средний</span><b>Вход по VPN: новая геолокация</b><span>${F('v.user','p.ivanov (Иванов П.)')} · 05.11 08:47 · ${F('v.geo','Казань')}</span></div>
+    ${L('sess','Детали сессии',`<div class="note">178.204.31.9 · домашний провайдер, Казань · LT-0388, корпоративный ноутбук, есть в CMDB</div>`)}
+    ${L('mfa','Журнал MFA',`<div class="note">08:47 · одобрено с зарегистрированного устройства</div>`)}`,
+  disc:[],
+  call:{label:'Позвонить Иванову по номеру из кадровой системы', text:'П. Иванов: «Да, это я, работаю из гостиницы».'},
+  key:'Справочник сотрудников: Иванов в командировке в Казани до 06.11.',
+  debrief:{label:'Легитимный двойник', name:'Двойник кейса Colonial Pipeline', text:'Необычная геолокация — повод проверить, а не заблокировать. Командировка в кадровой системе снимает вопрос.'}
+},
+{
+  day:2, id:'beac', when:s=>s.flags.chain==='foothold', type:'EDR', title:'Подозрительный процесс rundll32.exe на WS-BUH-07', malicious:true, chain:true, out:ATK('escalate'), par:10,
+  fx:{allow:{beacon:'missed'}, block:{beacon:'blocked'}, escalate:{beacon:'escalated'}},
+  layers:[{id:'tree',label:'Дерево процессов',cost:10},{id:'net',label:'Сетевая активность',cost:10},{id:'ti',label:'TI по IP',cost:5,needs:'ti'}],
+  html:`<div class="alert"><span class="sev">Средний</span><b>Подозрительный дочерний процесс</b><span>rundll32.exe · WS-BUH-07 · пользователь o.zaytseva</span></div>
+    ${L('tree','Дерево процессов',`<div class="scroll"><table class="log">
+      <tr><td>03.11 12:06</td><td>outlook.exe → explorer.exe → ${F('b2.lnk','Akt_sverki_ispr.lnk')}</td></tr>
+      <tr><td>03.11 12:06</td><td>cmd.exe → curl.exe -o %TEMP%\\kxv.dll</td></tr>
+      <tr><td>03.11 12:07</td><td>rundll32.exe %TEMP%\\kxv.dll,Init</td></tr></table></div>`)}
+    ${L('net','Сетевая активность',`<div class="note">${F('b2.net','HTTPS к 194.165.16.77:443 каждые 5 минут ± 30 с, с 03.11 12:07')}</div>`)}
+    ${L('ti','TI по IP',`<div class="note">${F('b2.ti','194.165.16.77 — сервер управления Cobalt Strike (TI, 29.10)')}</div>`)}`,
+  disc:[
+    ['b2.lnk','threat.thread','Ярлык из архива, пришедшего ответом в переписку'],
+    ['b2.lnk','b2.net','После запуска ярлыка — регулярный маячок наружу'],
+    ['b2.net','b2.ti','Регулярные обращения к серверу управления'],
+  ],
+  call:{label:'Позвонить Зайцевой', text:'О. Зайцева: «Во вторник открывала исправленный акт сверки от Кузнецовой. Ничего не открылось, я подумала, что файл битый».', finding:'Сотрудница открыла архив из письма «Re: Акт сверки»'},
+  key:'Слой «Дерево процессов»: ярлык из архива «Re: Акт сверки» запустил загрузчик. Это последствие письма, пропущенного во вторник. Хост заражён два дня, поэтому нужна эскалация, а не только изоляция.',
+  partialNote:'Хост изолирован, но маячок работал два дня. Что атакующий успел сделать, никто не проверил.',
+  debrief:{label:'Шаг 2 сквозной атаки', name:'Маячок Cobalt Strike', text:'После запуска загрузчика Qakbot операторы ставили маячок Cobalt Strike и изучали сеть. Чем раньше маячок найден, тем меньше атакующий успевает узнать.'}
+},
+{
+  day:2, id:'retry', when:s=>s.flags.chain==='blocked', type:'Письмо', title:'Re: Отгрузка по договору 214/25', malicious:true, chain:true, par:2,
+  out:{allow:'miss', block:'ok', escalate:'best'},
+  fx:{allow:{retry:'missed'}, block:{retry:'blocked'}, escalate:{retry:'escalated'}},
+  layers:[...MAIL_LAYERS.slice(0,1), {id:'link',label:'Реальный адрес ссылки',cost:2}, ...MAIL_LAYERS.slice(1)],
+  html:s=>`<div class="mail">
+    ${s.up.has('training')?`<div class="flagmsg">Сотрудник бухгалтерии нажал «Сообщить о фишинге» и не стал открывать ссылку.</div>`:''}
+    ${mailHead('СП','Сергей Павлов',F('a.from','s.pavlov@kolesa-market.kz'),'сегодня, 11:18')}
+    ${L('props','Свойства письма',`<div class="hdrs"><div><span>Authentication-Results:</span><span>spf=pass; dkim=pass (d=kolesa-market.kz); dmarc=pass</span></div></div>`)}
+    ${L('source','Исходный текст',`<div class="hdrs"><div><span>Received:</span><span>from mail.kolesa-market.kz ([92.46.108.3]) · Казахстан, интернет-магазин</span></div></div>`)}
+    ${L('whois','WHOIS и репутация',`<div class="note">kolesa-market.kz · зарегистрирован в 2017 · чисто<br>docs-share.top · зарегистрирован 3 дня назад</div>`)}
+    <div class="body">
+      <p>Добрый день!</p>
+      <p>Документы по отгрузке выложил на диск, архив большой, почтой не прошёл: <span class="fakelink">Открыть документы</span> ${LI('link',F('a.url','https://docs-share.top/d/8fk2Q/Otgruzka.zip'))}</p>
+      <p>Сергей Павлов</p>
+    </div>
+    <div class="quote">От: buh@sevterminal.ru · 30.10.2026<br>Сергей, когда ждать документы по отгрузке?</div>
+    ${L('sandbox','Песочница',`<div class="note">По ссылке ZIP → Otgruzka.lnk → загрузка DLL с 194.165.16.77 → rundll32.exe · тот же загрузчик, что во вторник</div>`)}
+  </div>`,
+  disc:[
+    ['a.from','ref.ts.domain','Имя Павлова, но письмо пришло с чужого домена'],
+    ['a.from','threat.thread','Ответ в существующую переписку с постороннего адреса'],
+    ['a.url','threat.thread','Ссылка на архив в ответе на переписку'],
+  ],
+  call:{label:'Позвонить Павлову по номеру из договора', text:'С. Павлов: «Документы по отгрузке мы шлём через ЭДО, никаких дисков».', finding:'Павлов не отправлял это письмо'},
+  key:'Слой «Адрес отправителя»: та же схема, что во вторник, но другой контрагент и ссылка вместо вложения. Первое письмо заблокировали без эскалации, вторая линия о кампании не знала, и атакующий попробовал снова.',
+  debrief:{label:'Шаг 1 сквозной атаки, вторая попытка', name:'Qakbot: новая приманка', text:'Операторы Qakbot меняли приманки: архивы, ссылки, HTML-файлы. Блокировка одного письма без эскалации кампанию не останавливает.'}
+},
+{
+  day:2, id:'adm', type:'Доступ', title:'Права администратора 1С для менеджера по продажам', policy:true, out:POL, par:0,
+  layers:[{id:'appr',label:'История согласований',cost:5},{id:'reason',label:'Обоснование',cost:5}],
+  html:`<div class="alert"><span class="sev">Заявка</span><b>SD-55160 · Предоставление доступа</b><span>Заявитель: Козлов Д. · Система: 1С · Роль: ${F('ad.role','Администратор')} · Статус: согласовано</span></div>
+    ${L('appr','История согласований',`<div class="note">${F('ad.appr','Согласовано: Лебедев К., руководитель продаж')}</div>`)}
+    ${L('reason','Обоснование',`<div class="note">«Нужно самому выгружать отчёты по продажам, ИТ долго делает»</div>`)}`,
+  disc:[
+    ['ad.role','ref.m.admin','Админ-права в 1С выдают только сотрудникам ИТ'],
+    ['ad.appr','ref.m.admin','Админ-права согласует руководитель ИТ, а не руководитель продаж'],
+    ['ad.role','ref.kozlov.dept','Менеджер по продажам запрашивает права администратора'],
+  ],
+  call:{label:'Позвонить руководителю ИТ', text:'А. Соколов: «Админку менеджеру не дадим. Отчёт настроим за день».', finding:'Руководитель ИТ права не согласовывал'},
+  key:'Поверхность и матрица доступа: админ-права только для ИТ. Согласование руководителя продаж не по матрице.',
+  debrief:{label:'Ситуация из практики', name:'Избыточные права', text:'Админ-права «для удобства» — частая находка аудитов и частый путь атакующего. Учётную запись Козлова в понедельник уже взламывали через MFA-бомбинг.'}
+},
+{
+  day:2, id:'orl', when:s=>!s.up.has('nm'), type:'MFA', title:'Аномалия MFA: помощник генерального директора', malicious:true, out:ATK('escalate'), par:10,
+  layers:[{id:'idp',label:'Журнал IdP',cost:10},{id:'sess',label:'Сессия после входа',cost:10}],
+  html:`<div class="alert"><span class="sev">Средний</span><b>Аномальное число запросов MFA</b><span>m.orlova (Орлова М.) · 13:40–14:05 · push</span></div>
+    ${L('idp','Журнал IdP',`<div class="scroll"><table class="log">
+      <tr><td>13:40–14:03</td><td>${F('o.den','Push MFA для m.orlova · ОТКЛОНЁН × 17')}</td></tr>
+      <tr><td>14:05</td><td>${F('o.ap','Push MFA для m.orlova · ОДОБРЕН')}</td></tr>
+      <tr><td>14:06</td><td>Вход в почту с нового устройства · 104.28.88.140</td></tr></table></div>`)}
+    ${L('sess','Сессия после входа',`<div class="note">${F('o.rule','14:09 · создано правило: пересылать письма генерального директора на m.orlova.sec@gmail.com')}</div>`)}`,
+  disc:[
+    ['o.den','o.ap','После серии отказов — одобрение: признак MFA-бомбинга'],
+    ['o.ap','threat.mfa','После серии отказов — одобрение: признак MFA-бомбинга'],
+    ['o.den','threat.mfa','После серии отказов — одобрение: признак MFA-бомбинга'],
+  ],
+  call:{label:'Позвонить Орловой по номеру из кадровой системы', text:'М. Орлова: «Телефон всё время пищал, я на совещании нажала, чтобы отстало».', finding:'Орлова одобрила запрос, не входя в систему'},
+  key:'Слой «Журнал IdP» показывает MFA-бомбинг, слой «Сессия» — пересылку почты генерального наружу. Number matching, если бы его купили вечером, закрыл бы эту атаку.',
+  partialNote:'Сессия остановлена, но правило пересылки и уже ушедшие письма никто не проверил.',
+  debrief:{name:'Uber (2022): вторая волна', text:'Та же техника, что в понедельник, только цель ценнее. После одобрения атакующие часто сразу создают правила пересылки, чтобы читать почту руководства. Number matching требует ввести число с экрана входа и почти закрывает эту технику.'}
+},
+{
+  day:2, id:'orl2', when:s=>s.up.has('nm'), type:'Звонок', title:'Отключить ввод числа в MFA: «срочно нужен документ»', malicious:true, out:ATK('block'), par:0,
+  layers:[{id:'pbx',label:'Номер по данным АТС',cost:5}],
+  html:`<div class="hdrs"><div><span>Линия:</span><span>helpdesk 1100 · 14:10</span></div>
+    ${LI('pbx',`<div><span>Входящий (АТС):</span>${F('o2.num','+7 958 117-04-63')}</div>`)}</div>
+  <div class="note">${F('o2.idp','IdP: 13:40–14:05 · 17 запросов MFA с вводом числа для m.orlova · ни один не подтверждён')}</div>
+  <div class="transcript">
+    <p><b>ЗВОНЯЩАЯ</b>Это Мария Орлова, приёмная генерального. Приложение просит какие-то цифры, я их не вижу. ${F('o2.ask','Отключите мне эту проверку')}, генеральному срочно нужен документ из почты.</p>
+    <p><b>HELPDESK</b>Назовите табельный номер.</p>
+    <p><b>ЗВОНЯЩАЯ</b>Ой, не помню. Девочки, ну пожалуйста, он меня убьёт.</p>
+  </div>`,
+  disc:[
+    ['o2.num','ref.orlova.phone','Номер звонящей не совпадает с номером в кадровой системе'],
+    ['o2.idp','o2.ask','Атакующий не прошёл ввод числа и просит отключить проверку'],
+    ['o2.idp','threat.mfa','Серия неподтверждённых запросов MFA перед звонком'],
+    ['o2.ask','threat.call','Давление и срочность по сценарию из бюллетеня угроз'],
+  ],
+  call:{label:'Перезвонить Орловой на номер из кадровой системы', text:'М. Орлова: «Я на совещании в Новосибирске, в helpdesk не звонила».', finding:'Настоящая Орлова не звонила'},
+  key:'Number matching сработал: атакующий не прошёл MFA и позвонил в helpdesk. Номер по АТС не совпадает с кадровой системой.',
+  debrief:{name:'MGM Resorts (2023): смена тактики', text:'Когда MFA-бомбинг перестаёт работать, атакующие переходят к социальной инженерии службы поддержки. Так действовала Scattered Spider. Защита не убирает атаку, а меняет её форму.'}
+},
+{
+  day:2, id:'kerb', when:s=>s.flags.chain==='foothold' && s.flags.beacon!=='escalated', type:'AD', title:'Аномалия Kerberos', malicious:true, chain:true, out:ATK('escalate'), par:10,
+  fx:{allow:{kerb:'missed'}, block:{kerb:'blocked'}, escalate:{kerb:'escalated'}},
+  layers:[{id:'ev',label:'События 4769',cost:10},{id:'acct',label:'Учётная запись',cost:5}],
+  html:`<div class="alert"><span class="sev">Высокий</span><b>Массовые запросы сервисных билетов Kerberos</b><span>38 запросов TGS за 2 минуты · хост WS-BUH-09 · УЗ ${F('k2.user','o.zaytseva')} · 15:20</span></div>
+    ${L('ev','События 4769',`<div class="scroll"><table class="log">
+      <tr><th>Сервис</th><th>Шифрование</th></tr>
+      <tr><td>MSSQLSvc/db01.sevterminal.local</td><td>${F('k2.rc4','0x17 (RC4)')}</td></tr>
+      <tr><td>MSSQLSvc/1c-sql01.sevterminal.local</td><td>0x17 (RC4)</td></tr>
+      <tr><td>HTTP/crm-app01.sevterminal.local</td><td>0x17 (RC4)</td></tr>
+      <tr><td>… ещё 35 сервисов</td><td>0x17 (RC4)</td></tr></table></div>`)}
+    ${L('acct','Учётная запись',`<div class="note">${F('k2.role','o.zaytseva · бухгалтер · работа с SQL-серверами не предусмотрена')} · вход на WS-BUH-09 впервые</div>`)}`,
+  disc:[
+    ['k2.rc4','k2.role','Бухгалтер массово запрашивает билеты сервисных УЗ с устаревшим шифрованием: Kerberoasting'],
+    ['k2.user','ref.m.buh','Роль «Бухгалтер» не работает с SQL-серверами, а УЗ запрашивает к ним билеты'],
+    ['k2.role','k2.rc4','Бухгалтер массово запрашивает билеты сервисных УЗ с устаревшим шифрованием: Kerberoasting'],
+  ],
+  call:{label:'Позвонить Зайцевой', text:'О. Зайцева: «Я сегодня работаю только со своего ноутбука. На 09-м даже не сидела».', finding:'Зайцева не входила на WS-BUH-09'},
+  key:'Слои «События 4769» и «Учётная запись»: бухгалтер массово запрашивает билеты к сервисным УЗ с RC4. Это Kerberoasting, атакующий уже использует украденную УЗ.',
+  partialNote:'УЗ заблокирована, но билеты уже выданы: пароли сервисных УЗ можно подбирать офлайн, их нужно менять.',
+  debrief:{label:'Шаг 3 сквозной атаки', name:'Kerberoasting', text:'Атакующий запрашивает билеты к сервисным учётным записям и подбирает их пароли офлайн. Сервисные УЗ часто имеют широкие права и старые пароли, поэтому это быстрый путь к администратору домена.'}
+},
+];
+
+/* ============ directory (changes by day) ============ */
+function staffHTML(d){
+  const rows = [
+    ['Белов Андрей · ИТ', F('ref.belov.status','Уволен 14.03.2026'), 'тел. —'],
+    ['Зайцева Ольга · Бухгалтерия', F('ref.zaytseva.status', d===0?'Вышла на работу 02.11.2026 после отпуска по уходу за ребёнком':'Работает'), '+7 926 118-40-92'],
+    ['Иванов Пётр · ИТ · таб. 0417', F('ref.ivanov.status','В командировке (Казань) до 06.11'), F('ref.ivanov.phone','+7 916 555-10-20')],
+    ['Ковалёва Татьяна · главный бухгалтер', 'Работает', '+7 926 400-12-55'],
+    [`Козлов Дмитрий · ${F('ref.kozlov.dept','Отдел продаж')}`, 'Работает', '+7 925 781-33-90'],
+    ['Орлова Мария · помощник генерального директора', F('ref.orlova.status', d<2?'Работает':'В командировке (Новосибирск) до 06.11'), F('ref.orlova.phone','+7 915 640-22-81')],
+    ['Смирнова Анна · Финансы · таб. 0288', F('ref.smirnova.status','В отпуске до 15.11'), F('ref.smirnova.phone','+7 903 222-41-07')],
+  ];
+  const heads = d>=1 ? `<h3>Руководители</h3><div class="dir">
+    <div class="row"><b>Соколов Артём · руководитель ИТ</b></div>
+    <div class="row"><b>Лебедев Кирилл · руководитель продаж</b></div>
+    <div class="row"><b>Фролова Ирина · коммерческий директор, владелец CRM</b></div></div>` : '';
+  return `<h3>Кадровая система</h3><div class="dir">${rows.map(r=>`<div class="row"><b>${r[0]}</b><span>${r[1]}</span><span class="mono">${r[2]}</span></div>`).join('')}</div>${heads}
+    <h3>ИТ-поддержка</h3><p style="margin:0">${F('ref.it.contact','Только внутренний номер 1100 и портал sd.sevterminal.ru. С внешних номеров и в мессенджерах ИТ не пишет.')}</p>`;
+}
+function extHTML(d){
+  return `<h3>Контрагенты</h3><div class="dir">
+    <div class="row"><b>ООО «ТехСнаб» · договор № 214/25</b><span>Домен: <span class="mono">${F('ref.ts.domain','tehsnab.ru')}</span></span><span>Контакт: Сергей Павлов, ${F('ref.ts.phone','+7 495 410-22-17')}</span></div>
+    <div class="row"><b>ООО «Логистик Плюс» · договор № 87/24</b><span>Домен: <span class="mono">${F('ref.lp.domain','logplus.ru')}</span></span><span>Контакт: Елена Кузнецова, ${F('ref.lp.phone','+7 812 300-45-61')}</span>${d>=2?`<span class="warnline">${F('ref.lp.status','04.11 сообщили о взломе почты. Домен временно недоверенный')}</span>`:''}</div>
+    ${d>=1?`<div class="row"><b>ООО «ДатаСервис» · договор № 31/26 до 31.12.2026</b><span>Поддержка облачной CRM · NDA № 12/26 действует</span><span>IP-адреса: <span class="mono">${F('ref.ds.ip','212.48.10.0/24')}</span></span></div>`:''}
+  </div>
+  <h3>ПО и опубликованные хэши</h3><div class="dir">
+    <div class="row"><b>DocFlow Client 8.1.3</b><span>SHA-256 установщика: <span class="mono">${F('ref.df.hash','4c1d9a07…e72b')}</span></span><span>Домены вендора: <span class="mono">${F('ref.df.dom','*.docflow.ru')}</span></span></div>
+    <div class="row"><b>NetWatch Monitor 5.2.1</b><span>SHA-256 NetWatch.Core.dll: <span class="mono">${F('ref.nw.hash','9f3c51b8…a41e')}</span></span><span>Домены вендора: <span class="mono">${F('ref.nw.dom','*.netwatch.io')}</span></span></div>
+    ${d>=1?`<div class="row"><b>Сканер уязвимостей SEC-SCAN-01</b><span>IP: <span class="mono">${F('ref.scan.ip','10.0.5.20')}</span></span><span>Окна сканирования: ${F('ref.scan.win','вт и чт 10:00–13:00')}</span></div>`:''}
+  </div>`;
+}
+function accHTML(){
+  const rows = [
+    ['Бухгалтер', '1С:Бухгалтерия (пользователь), \\\\fs01\\buh', F('ref.m.buh','главный бухгалтер')],
+    ['Менеджер по продажам', 'CRM (пользователь)', F('ref.m.sales','руководитель продаж')],
+    ['Администратор 1С, админ-права', F('ref.m.admin','только сотрудники ИТ'), 'руководитель ИТ'],
+    ['Выгрузка данных из CRM', 'по заявке с обоснованием', F('ref.m.export','коммерческий директор и ИБ')],
+    ['Подрядчик', F('ref.m.contractor','только системы из договора, срок не дольше договора'), 'владелец системы'],
+  ];
+  return `<h3>Матрица доступа</h3><div class="scroll"><table class="mx"><tr><th>Роль</th><th>Что можно</th><th>Согласует</th></tr>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table></div>`;
+}
+function rulesHTML(d){
+  const ru = RULES.filter(r=>r.day<=d), th = THREATS.filter(r=>r.day<=d);
+  const nw = r => r.day===d && d>0 ? ' <span class="new">новое</span>' : '';
+  return `<h3>Регламенты на ${DAYS[d].date}</h3><ol>${ru.map(r=>`<li>${F(r.k,r.t)}${nw(r)}</li>`).join('')}</ol>
+    <h3>Текущие угрозы</h3><ol>${th.map(r=>`<li>${F(r.k,r.t)}${nw(r)}</li>`).join('')}</ol>
+    <h3>Инструменты</h3><p class="empty" style="margin:0">${d===0?'Пробные лицензии песочницы и TI-подписки действуют до конца смены.':`Песочница: ${S.up.has('sandbox')?'есть':'нет'} · TI-подписка: ${S.up.has('ti')?'есть':'нет'} · Number matching: ${S.up.has('nm')?'включён':'нет'}`}<br>Вторая линия принимает не больше ${S.escMax} эскалаций за смену.</p>`;
+}
+function renderBinder(){
+  const d = S.day;
+  $('#pRules').innerHTML = rulesHTML(d);
+  $('#pStaff').innerHTML = staffHTML(d);
+  $('#pExt').innerHTML = extHTML(d);
+  $('#pAcc').innerHTML = accHTML();
+  $('#t-acc').hidden = d<1;
+}
+
+/* ============ upgrades ============ */
+const UPS = [
+  {id:'sandbox', name:'Песочница', cost:3, desc:'Снова открывает слой «Песочница» для вложений и ссылок. Пробная лицензия закончилась.'},
+  {id:'ti', name:'TI-подписка', cost:2, desc:'Открывает слои TI: репутация IP и доменов, учётные данные из логов инфостилеров.'},
+  {id:'nm', name:'Number matching для MFA', cost:1, desc:'Для подтверждения входа нужно ввести число с экрана. MFA-бомбинг перестаёт работать. Пользователи будут недовольны: лояльность −5.'},
+  {id:'training', name:'Обучение бухгалтерии', cost:2, desc:'Сотрудники начнут нажимать «Сообщить о фишинге», и вы увидите это на объекте.'},
+  {id:'overtime', name:'Переработка второй линии', cost:1, desc:'+2 эскалации на следующую смену. Действует один день.', once:true},
+];
+
+/* ============ state ============ */
+const $ = s => document.querySelector(s);
+const fmt = m => String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+let S;
+function freshState(){
+  return {day:0, min:540, running:false, paused:false, warns:0, pts:0, loy:100, esc:4, escMax:4,
+    findings:new Map(), called:new Set(), rev:new Map(), spent:new Map(), done:new Set(), res:[], sel:null, inspect:false, busy:false,
+    flags:{}, up:new Set(), budget:0, overtime:false, dayPts:0, history:[]};
+}
+S = freshState();
+const revOf = id => { if(!S.rev.has(id)) S.rev.set(id,new Set()); return S.rev.get(id); };
+const hasUp = k => S.day===0 || S.up.has(k);
+const dayCases = () => CASES.filter(c=>c.day===S.day && (!c.when || c.when(S) || S.done.has(c.id)));
+const current = () => dayCases().find(c=>!S.done.has(c.id));
+
+function renderQueue(){
+  const cur = current();
+  $('#queue').innerHTML = dayCases().map((c,i)=>`<li class="${c===cur?'cur':''} ${S.done.has(c.id)?'done':''}"><span>${i+1}. ${c.type}</span><em>${S.done.has(c.id)?'готово':c===cur?'на столе':'ждёт'}</em></li>`).join('');
+}
+function renderMeters(){
+  $('#clock').textContent = fmt(S.min);
+  $('#mDone').textContent = `${S.done.size} / ${dayCases().length}`;
+  $('#mWarn').textContent = S.warns;
+  $('#mPts').textContent = S.pts;
+  $('#mLoy').textContent = S.loy;
+  $('#loyBar').style.width = Math.max(0,Math.min(100,S.loy))+'%';
+  $('#loyBar').style.background = S.loy>60?'var(--ok)':S.loy>30?'var(--esc)':'var(--deny)';
+  $('#escLeft').textContent = `осталось ${S.esc}`;
+  $('#bEsc').disabled = S.esc<=0;
+}
+function probeHTML(c){
+  const rev = revOf(c.id);
+  return `<span class="plabel">Изучить</span>` + c.layers.map(l=>{
+    const open = rev.has(l.id);
+    if(l.needs && !hasUp(l.needs) && !open) return `<button type="button" class="pbtn locked" disabled>🔒 ${l.label}<em>${NEEDS[l.needs]}</em></button>`;
+    return `<button type="button" class="pbtn" data-layer-btn="${l.id}" ${open?'disabled':''}>${open?'✓ ':''}${l.label}<em>${open?'открыто':l.cost+' мин'}</em></button>`;
+  }).join('');
+}
+function applyLayers(c){
+  const rev = revOf(c.id);
+  $('#paper').querySelectorAll('.lyr').forEach(el=>{ el.hidden = !rev.has(el.dataset.layer); });
+}
+function callHTML(c){ return `<div class="callres"><div class="ltag">Проверка по второму каналу · ${c.call.label}</div>${c.call.text}${c.call.finding?`<div class="cf">${c.call.finding}</div>`:''}</div>`; }
+function renderCase(enter){
+  const c = current(); const p = $('#paper'); if(!c) return;
+  const list = dayCases();
+  const body = typeof c.html==='function' ? c.html(S) : c.html;
+  p.innerHTML = `<div class="kind"><span>Объект ${list.indexOf(c)+1} из ${list.length}</span><span>${c.type}</span></div><h2>${c.title}</h2>
+    <div class="probe" id="probe">${probeHTML(c)}</div><div id="callres">${S.called.has(c.id)?callHTML(c):''}</div>${body}<div class="stamp" id="stamp"></div>`;
+  applyLayers(c);
+  if(enter){ p.classList.add('in'); requestAnimationFrame(()=>requestAnimationFrame(()=>p.classList.remove('in'))); }
+  $('#callBtn').disabled = !c.call || S.called.has(c.id);
+  $('#callBtn').textContent = c.call ? `☎ ${c.call.label} · 30 мин` : '☎ Проверка недоступна';
+  clearSel(); renderFindings(); renderQueue(); renderMeters();
+}
+function reveal(layerId){
+  const c = current(); if(!c) return; const rev = revOf(c.id); const l = c.layers.find(x=>x.id===layerId);
+  if(!l || rev.has(l.id) || !S.running || S.busy) return;
+  if(l.needs && !hasUp(l.needs)) return;
+  rev.add(l.id); S.min = Math.min(DAYS[S.day].end, S.min + l.cost);
+  S.spent.set(c.id, (S.spent.get(c.id)||0) + l.cost);
+  applyLayers(c); $('#probe').innerHTML = probeHTML(c);
+  renderMeters(); checkEnd();
+}
+document.addEventListener('click', e=>{ const b = e.target.closest('[data-layer-btn]'); if(b) reveal(b.dataset.layerBtn); });
+
+function curFindings(){ const c=current(); const id=c?c.id:'_'; if(!S.findings.has(id)) S.findings.set(id,[]); return S.findings.get(id); }
+function renderFindings(){
+  const list = curFindings();
+  $('#findN').hidden = list.length===0; $('#findN').textContent = list.length;
+  $('#findings').innerHTML = list.length ? list.map(f=>`<div class="finding ${f.call?'call':''}">${f.text}</div>`).join('') :
+    '<p class="empty">Пока пусто. Включите режим инспекции и кликните по двум полям, которые противоречат друг другу.</p>';
+}
+function addFinding(text, call){
+  const list = curFindings();
+  if(list.some(f=>f.text===text)) return false;
+  list.push({text, call:!!call}); renderFindings(); return true;
+}
+function slip(title, text, info){
+  const el = document.createElement('div'); el.className = 'slip'+(info?' info':'');
+  el.innerHTML = `<b>${title}</b>${text}`; $('#slips').prepend(el);
+  setTimeout(()=>el.remove(), info?2600:5200);
+}
+function warn(text){
+  S.warns++;
+  if(S.warns>2){ S.pts-=10; slip(`Предупреждение № ${S.warns} · штраф −10`, text); }
+  else slip(`Предупреждение № ${S.warns}`, text+' Первые два за смену прощаются.');
+}
+function clearSel(){ document.querySelectorAll('.f.sel').forEach(e=>e.classList.remove('sel')); S.sel=null; }
+
+/* inspection */
+document.addEventListener('click', e=>{
+  if(!S.inspect || !S.running) return;
+  const f = e.target.closest('.f'); if(!f) return;
+  e.preventDefault();
+  if(!S.sel){ S.sel=f; f.classList.add('sel'); return; }
+  if(S.sel===f){ clearSel(); return; }
+  const a=S.sel.dataset.k, b=f.dataset.k, first=S.sel; clearSel();
+  const c = current(); if(!c) return;
+  const hit = c.disc.find(d=>(d[0]===a&&d[1]===b)||(d[0]===b&&d[1]===a));
+  const pair=[first,f]; const cls = hit?'hit':'miss';
+  pair.forEach(x=>x.classList.add(cls)); setTimeout(()=>pair.forEach(x=>x.classList.remove(cls)),900);
+  if(hit){ const fresh = addFinding(hit[2]); slip(fresh?'Находка записана':'Уже в находках', hit[2], true); }
+  else slip('Противоречие не найдено','Эти поля друг другу не противоречат.', true);
+});
+$('#inspectBtn').addEventListener('click', ()=>{
+  S.inspect=!S.inspect; document.body.classList.toggle('inspect',S.inspect);
+  $('#inspectBtn').setAttribute('aria-pressed',S.inspect); clearSel();
+});
+$('#callBtn').addEventListener('click', ()=>{
+  const c=current(); if(!c||!c.call||S.called.has(c.id)||!S.running||S.busy) return;
+  S.called.add(c.id); S.min=Math.min(DAYS[S.day].end,S.min+30);
+  addFinding(c.call.text, true);
+  if(c.call.finding) addFinding(c.call.finding);
+  $('#callres').innerHTML = callHTML(c);
+  slip('Результат проверки', c.call.text, true);
+  if(window.matchMedia('(max-width:1050px)').matches) $('#callres').scrollIntoView({behavior:'smooth', block:'center'});
+  else showTab('find');
+  $('#callBtn').disabled=true; renderMeters(); checkEnd();
+});
+
+/* tabs */
+function showTab(t){
+  document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===t));
+  document.querySelectorAll('.page').forEach(p=>p.hidden = p.dataset.page!==t);
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+
+/* ============ decisions ============ */
+const STAMP = {allow:['ПРОПУЩЕНО','var(--ok)'], block:['ЗАБЛОКИРОВАНО','var(--deny)'], escalate:['ЭСКАЛИРОВАНО','var(--esc)']};
+const VERD = {best:['Верно','c-ok'], ok:['Верно','c-ok'], partial:['Частично','c-mid'], violation:['Нарушение регламента','c-mid'], false:['Ложная блокировка','c-bad'], miss:['Атака пропущена','c-bad'], policy:['Нарушение регламента','c-bad']};
+function decide(d){
+  const c=current(); if(!S.running||S.busy||!c) return;
+  if(d==='escalate'){ if(S.esc<=0) return; S.esc--; }
+  const nf=curFindings().filter(f=>!f.call).length;
+  let o = c.out[d];
+  if(o==='ok' && d==='allow' && c.requiresCall && !S.called.has(c.id)) o='violation';
+  let note='';
+  switch(o){
+    case 'best': S.pts+=15; break;
+    case 'ok': S.pts+=10; break;
+    case 'partial': S.pts+=10; note=c.partialNote||'Угроза остановлена, но без расследования.'; break;
+    case 'violation': S.pts+=3; note='Решение верное, но обязательную проверку по второму каналу пропустили.'; warn('Нарушение регламента: решение принято без обязательной проверки по второму каналу.'); break;
+    case 'false': S.loy-=20; note='Объект был легитимным. Бизнес недоволен.'+(d==='escalate'?' Вторая линия потратила время впустую.':''); warn('Ложная блокировка легитимного объекта. Лояльность бизнеса −20.'); break;
+    case 'miss': S.pts-=25; note='Злоумышленник прошёл периметр.'; warn('Пропущена атака. Последствия ещё проявятся.'); break;
+    case 'policy': S.pts-=10; note='Регламент запрещал пропускать этот объект.'; warn('Нарушение регламента: объект пропущен вопреки бюллетеню. −10.'); break;
+  }
+  if((c.malicious||c.policy) && ['best','ok','partial'].includes(o)){
+    if(nf===0){ S.pts-=5; note+=(note?' ':'')+'Решение без обоснования: ни одной находки.'; }
+    else S.pts+=3*Math.min(nf,3);
+  }
+  if(c.loyCost && c.loyCost[d]){ S.loy-=c.loyCost[d]; note+=(note?' ':'')+`Генеральный директор недоволен отказом. Лояльность −${c.loyCost[d]}.`; }
+  if(c.fx && c.fx[d]) Object.assign(S.flags, c.fx[d]);
+  const spent = S.spent.get(c.id)||0;
+  const eco = (o==='best'||o==='ok') && spent<=c.par && (nf>0 || !(c.malicious||c.policy));
+  if(eco) S.pts+=3;
+  const opened = c.layers.filter(l=>revOf(c.id).has(l.id)).map(l=>l.label);
+  const [verdict, cls] = VERD[o];
+  S.res.push({c, d, verdict, cls, note, nf, called:S.called.has(c.id), spent, eco, opened});
+  const st=$('#stamp'); st.textContent=STAMP[d][0]; st.style.color=STAMP[d][1]; st.classList.add('on');
+  S.busy=true; renderMeters();
+  setTimeout(()=>{
+    $('#paper').classList.add('out');
+    setTimeout(()=>{
+      $('#paper').classList.remove('out'); S.done.add(c.id); S.busy=false;
+      if(!current()) endShift(); else { renderCase(true); showTab(document.querySelector('.tabs [aria-selected="true"]').dataset.tab==='find'?'rules':document.querySelector('.tabs [aria-selected="true"]').dataset.tab); }
+    },430);
+  },650);
+}
+$('#bAllow').addEventListener('click',()=>decide('allow'));
+$('#bBlock').addEventListener('click',()=>decide('block'));
+$('#bEsc').addEventListener('click',()=>decide('escalate'));
+
+/* clock */
+setInterval(()=>{ if(S.running && !S.paused && !S.busy){ S.min++; renderMeters(); checkEnd(); } },1000);
+function checkEnd(){ if(S.running && S.min>=DAYS[S.day].end) endShift(); }
+$('#pauseBtn').addEventListener('click',()=>{ if(!S.running) return; S.paused=!S.paused; $('#pauseBtn').textContent=S.paused?'Продолжить':'Пауза'; });
+
+/* ============ shift flow ============ */
+const DN = {allow:'Пропущено', block:'Заблокировано', escalate:'Эскалировано'};
+function startDay(i){
+  Object.assign(S,{day:i, min:540, warns:0, findings:new Map(), called:new Set(), rev:new Map(), spent:new Map(), done:new Set(), res:[], sel:null, busy:false, paused:false, dayPts:S.pts});
+  S.escMax = 4 + (S.overtime?2:0); S.esc = S.escMax; S.overtime=false;
+  $('#shiftInfo').textContent = `SOC · «Северный терминал» · смена ${i+1} из ${DAYS.length} · ${DAYS[i].date}`;
+  $('#pauseBtn').textContent='Пауза';
+  renderBinder(); showTab('rules'); renderCase(false);
+}
+function beginShift(){ S.running=true; $('#morning').hidden=true; $('#intro').hidden=true; renderCase(true); }
+
+function morningNews(i){
+  const n=[], f=S.flags;
+  if(i===1){
+    n.push(['', 'Пробные лицензии песочницы и TI-подписки закончились.'+(S.up.size?' Куплено вечером: '+UPS.filter(u=>S.up.has(u.id)).map(u=>u.name).join(', ')+'.':'')]);
+    n.push(['', 'Сегодня предпраздничный день: смена до 17:00.']);
+    n.push(['', 'Новый тип объектов: заявки на доступ. В справочнике появилась вкладка «Доступ» с матрицей ролей.']);
+  }
+  if(i===2){
+    if(f.chain==='contained'){ n.push(['good','По вашей эскалации вторая линия нашла письмо «Re: Акт сверки» ещё у трёх сотрудников и удалила его до открытия. Отправитель заблокирован на шлюзе. +5 очков.']); S.pts+=5; }
+    if(f.crm==='leaked'){ n.push(['bad','«Маркетинг-Лаб» не выходит на связь, а база клиентов «Северного терминала» выставлена на продажу на теневом форуме. Это утечка персональных данных, компания уведомляет Роскомнадзор. −20 очков, лояльность −15.']); S.pts-=20; S.loy-=15; }
+    if(f.crm==='escalated') n.push(['good','Коммерческий директор и вторая линия отклонили выгрузку для «Маркетинг-Лаб». Генеральный согласился подождать договора.']);
+    if(f.crm==='blocked') n.push(['', 'Генеральный директор недоволен отказом в выгрузке, но коммерческий директор вас поддержал.']);
+    if(f.snow==='escalated') n.push(['good','Вторая линия подтвердила компрометацию УЗ подрядчика ДатаСервис: пароль утёк через инфостилер. Пароль сменён, MFA включена, готовится уведомление в Роскомнадзор.']);
+    if(f.snow==='blocked'){ n.push(['', 'УЗ подрядчика заблокирована, но расследование началось только утром: выгрузку 1,8 ГБ из CRM нашли с опозданием. −10 очков.']); S.pts-=10; }
+    if(f.snow==='missed'){ n.push(['bad','ДатаСервис сообщил, что пароль его сотрудника утёк. Выгрузка 1,8 ГБ из CRM прошла незамеченной, уведомление в Роскомнадзор отправлено с опозданием. −20 очков.']); S.pts-=20; }
+    n.push(['', '04.11 ООО «Логистик Плюс» сообщило о взломе своего почтового сервера. В бюллетене новый временный регламент.']);
+    if(S.up.has('nm')) n.push(['', 'Number matching включён для всех сотрудников.']);
+  }
+  return n;
+}
+function showMorning(i){
+  const news = morningNews(i);
+  const rules = RULES.filter(r=>r.day===i), th = THREATS.filter(r=>r.day===i);
+  $('#morningSheet').innerHTML = `<div class="sub">Утро · ${DAYS[i].date}, ${DAYS[i].dow} · смена ${i+1} из ${DAYS.length}</div>
+    <h2>Бюллетень на ${DAYS[i].date}</h2>
+    ${news.length?`<h3 class="sh">Новости</h3><ul class="news">${news.map(x=>`<li class="${x[0]}">${x[1]}</li>`).join('')}</ul>`:''}
+    ${rules.length?`<h3 class="sh">Новые регламенты</h3><ul class="news">${rules.map(r=>`<li>${r.t}</li>`).join('')}</ul>`:''}
+    ${th.length?`<h3 class="sh">Новые угрозы</h3><ul class="news">${th.map(r=>`<li>${r.t}</li>`).join('')}</ul>`:''}
+    <p class="meta2">Эскалаций на смену: ${S.escMax}. Смена до ${fmt(DAYS[i].end)}.</p>
+    <button class="go" id="goShift" type="button">Заступить на смену</button>`;
+  $('#morning').hidden=false; S.dayPts=S.pts; renderMeters();
+  $('#goShift').addEventListener('click', beginShift);
+}
+
+function chainStatus(){
+  const f=S.flags;
+  if(f.chain==='contained') return ['good','Остановлена на шаге 1. Письмо удалено у всех получателей до открытия.'];
+  if(f.chain==='blocked'){
+    if(f.retry==='escalated') return ['good','Остановлена на шаге 1 со второй попытки. Вторая линия теперь знает о кампании.'];
+    if(f.retry==='blocked') return ['mid','Отбита дважды, но вторая линия о кампании так и не узнала. Атакующий попробует снова.'];
+    return ['bad','Атакующий закрепился со второй попытки: сотрудник открыл ссылку. Следующий шаг — маячок в сети.'];
+  }
+  if(f.chain==='foothold'){
+    if(f.beacon==='escalated') return ['good','Остановлена на шаге 2. Хост изолирован и расследован до кражи учётных данных.'];
+    if(f.kerb==='escalated') return ['mid','Остановлена на шаге 3. Атакующий успел запросить билеты сервисных УЗ, их пароли придётся менять.'];
+    return ['bad','Атакующий закрепился и получил билеты сервисных УЗ. Следующий шаг — администратор домена и шифрование.'];
+  }
+  return ['mid','Неизвестно.'];
+}
+
+function articleHTML(r){
+  return `<article>
+      <header><h4>${r.c.type} · ${r.c.title}</h4><span class="chip ${r.cls}">${r.verdict}</span></header>
+      <div class="meta">Ваше решение: ${r.d?DN[r.d]:'нет'} · находок: ${r.nf}${r.called?' · была проверка по второму каналу':''} · ${r.c.malicious?'атака':r.c.policy?'запрещено регламентом':'легитимный объект'}</div>
+      <div class="meta">Изучение: ${r.spent} мин${r.opened.length?' · '+r.opened.join(', '):' · ничего не раскрыто'}${r.eco?' · <b>экономно, +3</b>':''}</div>
+      ${r.note?`<div>${r.note}</div>`:''}
+      <div class="key"><b>Где была разгадка.</b> ${r.c.key}</div>
+      <div class="src"><b>${r.c.debrief.label||'Основано на реальном инциденте'}</b><br><strong>${r.c.debrief.name}.</strong> ${r.c.debrief.text}</div>
+    </article>`;
+}
+
+let picks = new Set();
+function endShift(){
+  if(!S.running) return;
+  S.running=false; S.inspect=false; document.body.classList.remove('inspect'); $('#inspectBtn').setAttribute('aria-pressed','false');
+  /* unresolved objects: attacks reach users, chained cases may unlock further ones */
+  let guard=0, c;
+  while((c=current()) && guard++<20){
+    if(c.fx && c.fx.allow) Object.assign(S.flags, c.fx.allow);
+    S.loy-=5; S.done.add(c.id);
+    S.res.push({c, d:null, verdict:'Не разобрано', cls:'c-bad', note:c.malicious?'Объект не обработан до конца смены: атака дошла до пользователя.':'Объект не обработан до конца смены. Лояльность −5.', nf:0, called:false, spent:S.spent.get(c.id)||0, eco:false, opened:[]});
+  }
+  const missed = S.res.filter(r=>r.c.malicious && (r.verdict==='Атака пропущена'||r.verdict==='Не разобрано')).length;
+  const study = S.res.reduce((a,r)=>a+r.spent,0);
+  const dayPts = S.pts - S.dayPts;
+  const last = S.day===DAYS.length-1;
+  const verdict = missed>0 ? 'Периметр пробит' : S.loy<50 ? 'Периметр цел, бизнес в ярости' : S.warns>2 ? 'Периметр цел, но с замечаниями' : 'Чистая смена';
+  let earned = 0;
+  if(!last){ earned = 3 + (missed===0?2:0) + (S.loy>=80?1:0) + (S.warns<=2?1:0); S.budget += earned; }
+  S.history.push({day:S.day, pts:dayPts, missed, warns:S.warns});
+  picks = new Set();
+  let tail='';
+  if(!last){
+    tail = `<section class="evening"><h3 class="sh">Вечер · бюджет отдела</h3>
+      <p>За смену отделу выделено <b>${earned} млн ₽</b>: базовые 3, +2 без пропущенных атак, +1 при лояльности от 80, +1 не больше двух предупреждений.${S.budget>earned?` Остаток с прошлого раза: ${S.budget-earned} млн ₽.`:''}</p>
+      <div class="ups" id="ups"></div>
+      <p class="meta2" id="budgetLeft"></p>
+      <button class="go" id="nextDay" type="button">Утро следующей смены</button></section>`;
+  } else {
+    const [cc, ct] = chainStatus();
+    const total = S.history.reduce((a,h)=>a+h.missed,0);
+    tail = `<section class="final"><h3 class="sh">Итоги трёх смен</h3>
+      <div class="totals"><div><small>Очки</small><b>${S.pts}</b></div><div><small>Пропущено атак</small><b>${total}</b></div><div><small>Лояльность</small><b>${S.loy}</b></div><div><small>Куплено</small><b>${S.up.size}</b></div></div>
+      <div class="chainbox ${cc}"><div class="ltag">Сквозная атака «Ответ»</div><b>${ct}</b>
+      <p>Цепочка повторяет типовую атаку 2022–2023 годов. Qakbot рассылался ответами в настоящую переписку с чужих взломанных ящиков: архив с паролем или ссылка, внутри ярлык, который загружает DLL. Дальше маячок Cobalt Strike, кража учётных данных (в игре — Kerberoasting) и шифрование Black Basta. В августе 2023 года ФБР и партнёры ликвидировали инфраструктуру Qakbot (операция Duck Hunt). Источник: CISA AA24-131A.</p></div>
+      <p>Это конец прототипа. Дальше по плану: DNS-логи и песочница, линия инсайдера, регуляторные часы НКЦКИ и РКН, пулл-реквесты и финал недели.</p>
+      <button class="go" id="againBtn" type="button">Начать заново</button></section>`;
+  }
+  $('#reportSheet').innerHTML = `<div class="sub">Отчёт о смене · ${DAYS[S.day].date} · ${fmt(Math.min(S.min,DAYS[S.day].end))}</div>
+    <h2>${verdict}</h2>
+    <div class="totals"><div><small>Очки за смену</small><b>${dayPts>0?'+':''}${dayPts}</b></div><div><small>Пропущено атак</small><b>${missed}</b></div><div><small>Предупреждения</small><b>${S.warns}</b></div><div><small>Лояльность</small><b>${S.loy}</b></div><div><small>На изучение</small><b>${study} мин</b></div></div>
+    ${last?'':'<button class="jump" type="button" onclick="document.querySelector(\'.evening\').scrollIntoView({behavior:\'smooth\'})">К вечернему бюджету ↓</button>'}<div class="rep">${S.res.map(articleHTML).join('')}</div>${tail}`;
+  $('#report').hidden=false; $('#report').scrollTop=0; renderMeters();
+  if(!last){ renderUps(); $('#nextDay').addEventListener('click', nextDay); }
+  else $('#againBtn').addEventListener('click', ()=>{ S=freshState(); $('#report').hidden=true; startDay(0); beginShift(); });
+}
+function spentPicks(){ return [...picks].reduce((a,id)=>a+UPS.find(u=>u.id===id).cost,0); }
+function renderUps(){
+  const left = S.budget - spentPicks();
+  $('#ups').innerHTML = UPS.map(u=>{
+    const owned = S.up.has(u.id), on = picks.has(u.id), can = on || left>=u.cost;
+    return `<button type="button" class="up ${on?'on':''}" data-up="${u.id}" ${owned||!can?'disabled':''} aria-pressed="${on}">
+      <span class="upn">${u.name}</span><span class="upc">${owned?'куплено':u.cost+' млн ₽'}</span><span class="upd">${u.desc}</span></button>`;
+  }).join('');
+  $('#budgetLeft').textContent = `Осталось: ${left} млн ₽. Неистраченное переходит на следующий вечер.`;
+}
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-up]'); if(!b || b.disabled) return;
+  const id=b.dataset.up; picks.has(id)?picks.delete(id):picks.add(id); renderUps();
+});
+function nextDay(){
+  S.budget -= spentPicks();
+  picks.forEach(id=>{ if(id==='overtime') S.overtime=true; else { S.up.add(id); if(id==='nm') S.loy-=5; } });
+  $('#report').hidden=true;
+  startDay(S.day+1); showMorning(S.day);
+}
+
+$('#startBtn').addEventListener('click',()=>{ beginShift(); });
+startDay(0);
+</script>
+
+</html>
