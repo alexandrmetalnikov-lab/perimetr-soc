@@ -126,7 +126,7 @@
   <article class="doc {docState}" style={rectStyle(L.doc)}>
     <div class="kind"><span>Объект {cur + 1} из 9</span><span>{c.kind}</span></div>
     <h2>{c.title}</h2>
-    <div class="mh"><div class="ava">{c.ini}</div><div><b>{c.from}</b><small>кому: buh@sevterminal.ru · {c.time}</small></div></div>
+    <div class="mh">{#if c.portrait}<div class="ava pic" style="background-image:url({base}assets/portraits/{c.portrait})" role="img" aria-label={c.from}></div>{:else}<div class="ava">{c.ini}</div>{/if}<div><b>{c.from}</b><small>кому: buh@sevterminal.ru · {c.time}</small></div></div>
     {#each c.body as p}<p>{p}</p>{/each}
     <p>{#each c.signature as s, i}{s}{#if i < c.signature.length - 1}<br />{/if}{/each}</p>
     <span class="att">📎 {c.att}</span>
@@ -198,6 +198,7 @@
   .doc h2{font-family:var(--f-display);font-weight:400;font-size:1.25em;margin:.35em 0 .6em;text-wrap:balance}
   .mh{display:flex;gap:.8em;align-items:center;margin-bottom:.7em}
   .ava{width:2.6em;height:2.6em;border-radius:50%;background:#d3c8ad;display:grid;place-items:center;font-family:var(--f-mono);font-weight:600;flex:none}
+  .ava.pic{width:3.4em;height:3.4em;background-color:#16223a;background-size:240% auto;background-position:66% 30%;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
   .mh small{display:block;color:#6a6658}
   .doc p{margin:0 0 .6em;max-width:62ch}
   .att{display:inline-block;font-family:var(--f-mono);font-size:.9em;border:1px solid #b2aa95;padding:.2em .6em}
