@@ -37,6 +37,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | bg-desk-evening-portrait | `art-src/bg/bg-desk-evening-portrait.png` | эталон для телефона |
 | obj-phone | `art-src/obj/obj-phone.png` | для интерфейса и окна звонка |
 | p-kuznetsova | `art-src/portraits/p-kuznetsova.png` | базовый портрет |
+| p-zaytseva | `art-src/portraits/p-zaytseva.png` | базовый портрет |
 
 ## Какие предметы генерировать отдельно
 
