@@ -2,6 +2,7 @@
 export interface DemoCase {
   kind: string; title: string; ini: string; from: string; time: string;
   body: string[]; signature: string[]; att: string; bad: boolean; why: string;
+  portrait?: string; // файл в public/assets/portraits
 }
 
 export const DEMO: DemoCase[] = [
@@ -17,7 +18,7 @@ export const DEMO: DemoCase[] = [
     from: 'Елена Кузнецова', time: 'сегодня, 16:20',
     body: ['Уважаемые коллеги! С 01.12.2026 ООО «Логистик Плюс» переходит на обслуживание в другой банк. Уведомление на бланке во вложении, оригинал направлен почтой.'],
     signature: ['Елена Кузнецова, главный бухгалтер', '+7 812 300-45-61'],
-    att: 'Uvedomlenie_rekvizity_LP.pdf · 184 КБ', bad: false, why: 'Настоящее письмо, но по регламенту нужен звонок по договору.',
+    att: 'Uvedomlenie_rekvizity_LP.pdf · 184 КБ', bad: false, portrait: 'p-kuznetsova.webp', why: 'Настоящее письмо, но по регламенту нужен звонок по договору.',
   },
 ];
 
