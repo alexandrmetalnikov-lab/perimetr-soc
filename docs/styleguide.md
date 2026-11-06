@@ -35,3 +35,15 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 |---|---|---|
 | bg-desk-evening | `art-src/bg/bg-desk-evening.png` | эталон |
 | bg-desk-evening-portrait | `art-src/bg/bg-desk-evening-portrait.png` | эталон для телефона |
+| obj-phone | `art-src/obj/obj-phone.png` | для интерфейса и окна звонка |
+
+## Какие предметы генерировать отдельно
+
+Телефон, папка, кружка и лоток со штампами уже нарисованы в самом столе. Отдельный спрайт нужен
+только тому, что двигается само по себе или появляется поверх сцены:
+
+- `obj-stamp-allow`, `obj-stamp-block`, `obj-stamp-escalate` — по одному штампу: для анимации «штамп опускается на документ»
+- `obj-lamp` — красная лампа критического алерта, выключенная и включённая (её на столе нет)
+- `obj-phone` — уже есть, для интерфейса
+
+`obj-phone-handset`, `obj-binder`, `obj-mug` из первого списка больше не нужны.
