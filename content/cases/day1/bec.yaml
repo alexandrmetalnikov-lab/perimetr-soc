@@ -1,0 +1,61 @@
+id: bec
+day: 1
+kind: email
+title: "СРОЧНО: смена реквизитов, оплата счёта № 1187 до конца дня"
+truth: attack            # attack | legit | policy
+outcomes: { allow: miss, block: best, escalate: ok }
+par: 0                   # сколько минут изучения достаточно для бонуса «экономно»
+
+layers:
+  - { id: addr, label: Адрес отправителя, cost: 2 }
+  - { id: props, label: Свойства письма, cost: 10 }
+  - { id: source, label: Исходный текст, cost: 15 }
+  - { id: whois, label: WHOIS и репутация домена, cost: 15 }
+  - { id: sandbox, label: Песочница для вложения, cost: 45, needs: sandbox }
+
+email:
+  avatar: ТС
+  from_name: ООО ТехСнаб — бухгалтерия
+  from_addr: { layer: addr, text: "buh@[[bec.from|tehsnab-pay.ru]]" }
+  to: buh@sevterminal.ru
+  time: сегодня, 10:02
+  headers:
+    - { layer: props, name: Reply-To, value: "[[bec.reply|tehsnab.buh@gmail.com]]" }
+    - { layer: props, name: Authentication-Results, value: "spf=pass (smtp.mailfrom=tehsnab-pay.ru); dkim=none; dmarc=none" }
+    - { layer: source, name: Received, value: "from mail.tehsnab-pay.ru ([45.137.21.9]) · VPS-хостинг" }
+  notes:
+    - { layer: whois, text: "[[bec.whois|tehsnab-pay.ru · зарегистрирован 27.10.2026, 6 дней назад]] · в TI упоминаний нет" }
+    - { layer: sandbox, text: "PDF, 1 страница: таблица реквизитов · активного содержимого и ссылок нет · сетевой активности нет" }
+  body: |
+    Добрый день!
+
+    В связи с проверкой наш расчётный счёт временно заблокирован. Просим оплату по счёту № 1187 на сумму 4 860 000 ₽ провести сегодня до 17:00 по новым реквизитам во вложении. Задержка оплаты приведёт к остановке отгрузок.
+
+    По всем вопросам звоните мне напрямую.
+    Сергей Павлов, бухгалтерия
+    [[bec.phone|+7 499 113-08-52]]
+  attachment: Novye_rekvizity_schet_1187.pdf · 96 КБ
+
+evidence:
+  - [bec.phone, ref.ts.phone, Телефон в подписи не совпадает с телефоном из договора]
+  - [bec.from, ref.ts.domain, Домен отправителя не совпадает с доменом контрагента по договору]
+  - [bec.whois, ref.ts.domain, Домен зарегистрирован неделю назад и не совпадает с доменом из договора]
+  - [bec.from, bec.reply, "Ответы уходят на сторонний ящик: Reply-To не совпадает с From"]
+  - [bec.reply, ref.ts.domain, "Ответы уходят на сторонний ящик: Reply-To не совпадает с From"]
+
+call:
+  label: Позвонить Павлову по номеру из договора
+  text: "С. Павлов: «Реквизиты не менялись, никаких писем мы не отправляли»."
+  finding: Контрагент не подтвердил смену реквизитов
+
+key: >-
+  Поверхность: телефон в подписи не совпадает со справочником контрагентов.
+  Песочница здесь бесполезна: в BEC нет вредоноса, атака целиком в тексте.
+
+debrief:
+  label: Основано на реальном инциденте
+  name: Дело Римасаускаса против Google и Facebook (2013–2015)
+  text: >-
+    Эвалдас Римасаускас выдавал себя за тайваньского производителя Quanta Computer и отправлял двум
+    компаниям поддельные счета от похожей на настоящую фирмы. Они перевели ему более 100 млн долларов.
+    В 2019 году он получил 5 лет заключения.
