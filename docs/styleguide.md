@@ -38,6 +38,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | obj-phone | `art-src/obj/obj-phone.png` | для интерфейса и окна звонка |
 | p-kuznetsova | `art-src/portraits/p-kuznetsova.png` | базовый портрет |
 | p-zaytseva | `art-src/portraits/p-zaytseva.png` | базовый портрет |
+| p-orlova | `art-src/portraits/p-orlova.png` | базовый портрет, волосы перекрашены |
 
 ## Какие предметы генерировать отдельно
 
@@ -53,5 +54,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 ## Портреты: как не уйти в фотореализм
 
 К запросу прикладываются **две** картинки, и роли называются прямо: «Image 1 is the character, image 2 is the art style».
-Первая — портрет персонажа (внешность), вторая — эталонный стол (стиль). Если приложить только портрет,
+Первая — портрет персонажа (внешность), вторая — эталонный стол (стиль).
+Каждому персонажу нужен свой силуэт: цвет волос, причёска, одежда, возраст. ChatGPT тяготеет к одному типажу,
+поэтому отличительные черты прописываются явно. Если приложить только портрет,
 ChatGPT копирует и его манеру. Рабочий промпт — в `art-src/portraits/p-kuznetsova.md`.
