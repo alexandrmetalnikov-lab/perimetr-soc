@@ -41,6 +41,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | p-orlova | `art-src/portraits/p-orlova.png` | базовый портрет, волосы перекрашены |
 | p-ivanov | `art-src/portraits/p-ivanov.png` | базовый портрет |
 | p-kozlov | `art-src/portraits/p-kozlov.png` | базовый портрет, волосы перекрашены |
+| p-caller-unknown-m | `art-src/portraits/p-caller-unknown-m.png` | силуэт без лица, мужской |
 
 ## Какие предметы генерировать отдельно
 

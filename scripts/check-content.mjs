@@ -120,7 +120,7 @@ for await (const f of files('content/cases')) {
 
   // люди
   for (const [where, id] of [['email.sender', c.email?.sender], ['phone_call.caller', c.phone_call?.caller], ['call.person', c.call?.person], ['ticket_person', c.ticket_person]])
-    if (id && id !== 'unknown' && !personIds.has(id)) err(f, `${where}: нет персонажа «${id}» в people.yaml`);
+    if (id && !personIds.has(id)) err(f, `${where}: нет персонажа «${id}» в people.yaml`);
 
   // улики
   const local = keysIn(c);

@@ -13,7 +13,7 @@ layers:
   - { id: pbx, label: Номер по данным АТС, cost: 5 }
 
 phone_call:
-  caller: unknown
+  caller: unknown_f
   line: helpdesk 1100 · 14:10
   number: { layer: pbx, text: "[[o2.num|+7 958 117-04-63]]" }
   note: "[[o2.idp|IdP: 13:40–14:05 · 17 запросов MFA с вводом числа для m.orlova · ни один не подтверждён]]"

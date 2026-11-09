@@ -69,3 +69,9 @@ external:
   - id: pavlov
     name: Сергей Павлов
     org: ООО «ТехСнаб», бухгалтерия
+  - id: unknown_m
+    name: Неизвестный звонящий
+    portrait: p-caller-unknown-m.webp
+  - id: unknown_f
+    name: Неизвестная звонящая
+    portrait: p-caller-unknown-f.webp
