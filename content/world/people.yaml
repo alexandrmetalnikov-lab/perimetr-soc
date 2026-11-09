@@ -82,3 +82,7 @@ team:
     name: Начальник SOC
     role: ведёт разбор смены, принимает решения по эскалациям
     portrait: p-boss.webp
+  - id: colleague
+    name: Коллега со второй линии
+    role: принимает эскалации
+    portrait: p-colleague.webp

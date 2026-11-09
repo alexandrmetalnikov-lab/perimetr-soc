@@ -43,6 +43,8 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | p-kozlov | `art-src/portraits/p-kozlov.png` | базовый портрет, волосы перекрашены |
 | p-caller-unknown-m | `art-src/portraits/p-caller-unknown-m.png` | силуэт без лица, мужской |
 | p-boss | `art-src/portraits/p-boss.png` | базовый портрет |
+| p-caller-unknown-f | `art-src/portraits/p-caller-unknown-f.png` | силуэт без лица, женский |
+| p-colleague | `art-src/portraits/p-colleague.png` | базовый портрет, волосы перекрашены в рыжий |
 
 ## Какие предметы генерировать отдельно
 
@@ -61,6 +63,6 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 Первая — портрет персонажа (внешность), вторая — эталонный стол (стиль).
 Каждому персонажу нужен свой силуэт: цвет волос, причёска, одежда, возраст. ChatGPT тяготеет к одному типажу,
 поэтому отличительные черты прописываются явно.
-Если персонаж всё же вышел похожим, волосы можно перекрасить в чёрный: `scripts/recolor-hair.py` с маской-полигоном
+Если персонаж всё же вышел похожим, волосы можно перекрасить (в чёрный или в любой цвет): `scripts/recolor-hair.py` с маской-полигоном
 (примеры — `art-src/probes/*.mask.json`). Если приложить только портрет,
 ChatGPT копирует и его манеру. Рабочий промпт — в `art-src/portraits/p-kuznetsova.md`.
