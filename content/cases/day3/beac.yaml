@@ -1,0 +1,60 @@
+id: beac
+day: 3
+order: 3
+when: { flags: { chain: foothold } }
+kind: alert
+type: EDR
+title: Подозрительный процесс rundll32.exe на WS-BUH-07
+truth: attack
+chain: true
+outcomes: { allow: miss, block: partial, escalate: best }
+par: 10
+partial_note: Хост изолирован, но маячок работал два дня. Что атакующий успел сделать, никто не проверил.
+fx:
+  allow: { beacon: missed }
+  block: { beacon: blocked }
+  escalate: { beacon: escalated }
+
+layers:
+  - { id: tree, label: Дерево процессов, cost: 10 }
+  - { id: net, label: Сетевая активность, cost: 10 }
+  - { id: ti, label: TI по IP, cost: 5, needs: ti }
+
+alert:
+  severity: Средний
+  title: Подозрительный дочерний процесс
+  summary: rundll32.exe · WS-BUH-07 · пользователь o.zaytseva
+
+blocks:
+  - layer: tree
+    table:
+      - ["03.11 12:06", "outlook.exe → explorer.exe → [[b2.lnk|Akt_sverki_ispr.lnk]]"]
+      - ["03.11 12:06", "cmd.exe → curl.exe -o %TEMP%\\kxv.dll"]
+      - ["03.11 12:07", "rundll32.exe %TEMP%\\kxv.dll,Init"]
+  - layer: net
+    note: "[[b2.net|HTTPS к 194.165.16.77:443 каждые 5 минут ± 30 с, с 03.11 12:07]]"
+  - layer: ti
+    note: "[[b2.ti|194.165.16.77 — сервер управления Cobalt Strike (TI, 29.10)]]"
+
+evidence:
+  - ["b2.lnk", "threat.thread", "Ярлык из архива, пришедшего ответом в переписку"]
+  - ["b2.lnk", "b2.net", "После запуска ярлыка — регулярный маячок наружу"]
+  - ["b2.net", "b2.ti", "Регулярные обращения к серверу управления"]
+
+call:
+  label: Позвонить Зайцевой
+  person: zaytseva
+  emotion: guilty
+  text: "О. Зайцева: «Во вторник открывала исправленный акт сверки от Кузнецовой. Ничего не открылось, я подумала, что файл битый»."
+  finding: "Сотрудница открыла архив из письма «Re: Акт сверки»"
+
+key: >-
+  Слой «Дерево процессов»: ярлык из архива «Re: Акт сверки» запустил загрузчик. Это последствие письма,
+  пропущенного во вторник. Хост заражён два дня, поэтому нужна эскалация, а не только изоляция.
+
+debrief:
+  label: Шаг 2 сквозной атаки
+  name: Маячок Cobalt Strike
+  text: >-
+    После запуска загрузчика Qakbot операторы ставили маячок Cobalt Strike и изучали сеть. Чем раньше
+    маячок найден, тем меньше атакующий успевает узнать.

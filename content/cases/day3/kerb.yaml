@@ -1,0 +1,58 @@
+id: kerb
+day: 3
+order: 8
+when: { flags: { chain: foothold }, not_flags: { beacon: escalated } }
+kind: alert
+type: AD
+title: Аномалия Kerberos
+truth: attack
+chain: true
+outcomes: { allow: miss, block: partial, escalate: best }
+par: 10
+partial_note: "УЗ заблокирована, но билеты уже выданы: пароли сервисных УЗ можно подбирать офлайн, их нужно менять."
+fx:
+  allow: { kerb: missed }
+  block: { kerb: blocked }
+  escalate: { kerb: escalated }
+
+layers:
+  - { id: ev, label: События 4769, cost: 10 }
+  - { id: acct, label: Учётная запись, cost: 5 }
+
+alert:
+  severity: Высокий
+  title: Массовые запросы сервисных билетов Kerberos
+  summary: "38 запросов TGS за 2 минуты · хост WS-BUH-09 · УЗ [[k2.user|o.zaytseva]] · 15:20"
+
+blocks:
+  - layer: ev
+    columns: [Сервис, Шифрование]
+    table:
+      - ["MSSQLSvc/db01.sevterminal.local", "[[k2.rc4|0x17 (RC4)]]"]
+      - ["MSSQLSvc/1c-sql01.sevterminal.local", "0x17 (RC4)"]
+      - ["HTTP/crm-app01.sevterminal.local", "0x17 (RC4)"]
+      - ["… ещё 35 сервисов", "0x17 (RC4)"]
+  - layer: acct
+    note: "[[k2.role|o.zaytseva · бухгалтер · работа с SQL-серверами не предусмотрена]] · вход на WS-BUH-09 впервые"
+
+evidence:
+  - ["k2.rc4", "k2.role", "Бухгалтер массово запрашивает билеты сервисных УЗ с устаревшим шифрованием: Kerberoasting"]
+  - ["k2.user", "ref.m.buh", "Роль «Бухгалтер» не работает с SQL-серверами, а УЗ запрашивает к ним билеты"]
+  - ["k2.role", "k2.rc4", "Бухгалтер массово запрашивает билеты сервисных УЗ с устаревшим шифрованием: Kerberoasting"]
+
+call:
+  label: Позвонить Зайцевой
+  person: zaytseva
+  text: "О. Зайцева: «Я сегодня работаю только со своего ноутбука. На 09-м даже не сидела»."
+  finding: Зайцева не входила на WS-BUH-09
+
+key: >-
+  Слои «События 4769» и «Учётная запись»: бухгалтер массово запрашивает билеты к сервисным УЗ с RC4.
+  Это Kerberoasting, атакующий уже использует украденную УЗ.
+
+debrief:
+  label: Шаг 3 сквозной атаки
+  name: Kerberoasting
+  text: >-
+    Атакующий запрашивает билеты к сервисным учётным записям и подбирает их пароли офлайн. Сервисные УЗ
+    часто имеют широкие права и старые пароли, поэтому это быстрый путь к администратору домена.

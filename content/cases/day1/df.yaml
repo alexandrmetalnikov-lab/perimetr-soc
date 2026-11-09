@@ -1,0 +1,42 @@
+id: df
+day: 1
+order: 6
+kind: alert
+type: EDR
+title: Новый исполняемый файл на хостах бухгалтерии
+truth: legit
+outcomes: { allow: ok, block: false_block, escalate: false_block }
+par: 10
+
+layers:
+  - { id: file, label: Сведения о файле, cost: 10 }
+  - { id: net, label: Сетевая активность, cost: 10 }
+
+alert:
+  severity: Низкий
+  title: Запуск нового исполняемого файла
+  summary: docflow_setup_8.1.3.exe · WS-BUH-07, WS-BUH-08, WS-BUH-11
+
+blocks:
+  - layer: file
+    table:
+      - ["Подпись", "DocFlow Systems · валидна"]
+      - ["SHA-256", "[[df.hash|4c1d9a07…e72b]]"]
+      - ["Загружен с", "[[df.src|updates.docflow.ru]]"]
+  - layer: net
+    note: "После установки: updates.docflow.ru, license.docflow.ru"
+
+ticket: Заявка на изменение CHG-2231 · «Плановое обновление DocFlow в бухгалтерии» · согласована
+
+call:
+  label: Уточнить у администраторов
+  text: "Админы: «Плановое обновление по CHG-2231, раскатываем на бухгалтерию»."
+
+key: >-
+  Слой «Сведения о файле»: регламент допускает обновление, только если хэш совпадает
+  с опубликованным вендором. Заявки на изменение для этого мало.
+
+debrief:
+  label: Легитимный двойник
+  name: Двойник кейса 3CX
+  text: Обновление с совпадающим хэшем, сетевыми обращениями только к доменам вендора и согласованной заявкой на изменение.

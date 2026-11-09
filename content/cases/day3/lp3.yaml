@@ -1,0 +1,65 @@
+id: lp3
+day: 3
+order: 1
+kind: email
+type: Письмо
+title: Счёт № 3391 за октябрь
+truth: policy
+outcomes: { allow: policy, block: best, escalate: ok }
+par: 0
+
+layers:
+  - { id: addr, label: Адрес отправителя, cost: 2 }
+  - { id: props, label: Свойства письма, cost: 10 }
+  - { id: source, label: Исходный текст, cost: 15 }
+  - { id: whois, label: WHOIS и репутация домена, cost: 15 }
+  - { id: sandbox, label: Песочница для вложения, cost: 45, needs: sandbox }
+
+email:
+  sender: kuznetsova
+  avatar: ЕК
+  from_name: Елена Кузнецова
+  from_addr: { layer: addr, text: "e.kuznetsova@[[l.from|logplus.ru]]" }
+  to: buh@sevterminal.ru
+  time: сегодня, 09:25
+  body: |
+    Добрый день!
+
+    Счёт за октябрь во вложении, реквизиты прежние.
+
+    Елена Кузнецова
+    +7 812 300-45-61
+  attachment: Schet_3391.pdf · 140 КБ
+
+blocks:
+  - layer: props
+    headers:
+      - ["Authentication-Results", "spf=pass; dkim=pass (d=logplus.ru); dmarc=pass"]
+  - layer: source
+    headers:
+      - ["Received", "from mx1.logplus.ru (mx1.logplus.ru [91.215.40.12])"]
+  - layer: whois
+    note: "logplus.ru · зарегистрирован 14.03.2011 · с 04.11 в фидах: «скомпрометированный почтовый сервер»"
+  - layer: sandbox
+    at: bottom
+    note: PDF, 1 страница · активного содержимого и ссылок нет
+
+evidence:
+  - ["l.from", "rule.lp", "Письмо с домена logplus.ru, который сегодня недоверенный"]
+  - ["l.from", "ref.lp.status", "Письмо с домена logplus.ru, который сегодня недоверенный"]
+
+call:
+  label: Позвонить Кузнецовой по номеру из договора
+  person: kuznetsova
+  text: "Е. Кузнецова: «Счёт наш, но почту нам ещё чистят. Продублируем через ЭДО»."
+
+key: >-
+  Бюллетень: домен logplus.ru временно недоверенный. Письмо может быть настоящим, но регламент требует
+  не пропускать вложение и получить счёт через ЭДО.
+
+debrief:
+  label: Временное правило
+  name: Компрометация почты контрагента
+  text: >-
+    После взлома почты контрагента злоумышленник может писать с его настоящего домена, и проверки
+    подлинности пройдут. Пока контрагент не подтвердил очистку, документы принимают только через ЭДО.

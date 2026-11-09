@@ -1,0 +1,36 @@
+id: kzn
+day: 3
+order: 2
+kind: alert
+type: VPN
+title: Вход по VPN из нового города
+truth: legit
+outcomes: { allow: ok, block: false_block, escalate: false_block }
+par: 0
+
+layers:
+  - { id: sess, label: Детали сессии, cost: 5 }
+  - { id: mfa, label: Журнал MFA, cost: 5 }
+
+alert:
+  severity: Средний
+  title: "Вход по VPN: новая геолокация"
+  summary: "[[v.user|p.ivanov (Иванов П.)]] · 05.11 08:47 · [[v.geo|Казань]]"
+
+blocks:
+  - layer: sess
+    note: 178.204.31.9 · домашний провайдер, Казань · LT-0388, корпоративный ноутбук, есть в CMDB
+  - layer: mfa
+    note: 08:47 · одобрено с зарегистрированного устройства
+
+call:
+  label: Позвонить Иванову по номеру из кадровой системы
+  person: ivanov
+  text: "П. Иванов: «Да, это я, работаю из гостиницы»."
+
+key: Справочник сотрудников. Иванов в командировке в Казани до 06.11.
+
+debrief:
+  label: Легитимный двойник
+  name: Двойник кейса Colonial Pipeline
+  text: Необычная геолокация — повод проверить, а не заблокировать. Командировка в кадровой системе снимает вопрос.

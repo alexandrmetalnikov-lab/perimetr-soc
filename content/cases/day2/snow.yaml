@@ -1,0 +1,56 @@
+id: snow
+day: 2
+order: 5
+kind: alert
+type: Облако
+title: Вход в облачную CRM под УЗ подрядчика
+truth: attack
+chain: true
+outcomes: { allow: miss, block: partial, escalate: best }
+par: 5
+partial_note: УЗ заблокирована, но 1,8 ГБ уже выгружено, а расследование не начато.
+fx:
+  allow: { snow: missed }
+  block: { snow: blocked }
+  escalate: { snow: escalated }
+
+layers:
+  - { id: sess, label: Детали сессии, cost: 5 }
+  - { id: act, label: Активность в CRM, cost: 10 }
+  - { id: ti, label: TI по учётным данным, cost: 5, needs: ti }
+
+alert:
+  severity: Средний
+  title: Вход в облачную CRM
+  summary: ds.support (ДатаСервис, подрядчик) · 03.11 13:10 · пароль, MFA не настроена
+
+blocks:
+  - layer: sess
+    table:
+      - ["IP", "[[s.ip|45.86.162.19 · VPS-хостинг, Нидерланды]]"]
+      - ["Клиент", "DBeaver 23.2 · прямое подключение к базе"]
+  - layer: act
+    note: "[[s.exp|13:12–13:31 · выгрузка таблиц clients, contracts, payments · 1,8 ГБ]]"
+  - layer: ti
+    note: "[[s.ti|ds.support@datas-it.ru найден в логах инфостилера Lumma от 21.10]]"
+
+evidence:
+  - ["s.ip", "ref.ds.ip", "Вход не с IP-адресов подрядчика из договора"]
+  - ["s.ip", "rule.contractor", "Вход не с IP-адресов подрядчика из договора"]
+  - ["s.exp", "ref.m.export", "Массовая выгрузка без согласования владельца CRM"]
+  - ["s.ti", "s.ip", "Пароль утёк через инфостилер, вход с постороннего VPS"]
+
+call:
+  label: Позвонить в ДатаСервис по номеру из договора
+  text: "ДатаСервис: «Сегодня в вашу CRM никто из наших не заходил. Сейчас сменим пароль»."
+  finding: Подрядчик не входил в CRM
+
+key: >-
+  Слой «Детали сессии» и справочник контрагентов: вход не с IP подрядчика. Слой «Активность» показывает,
+  что данные уже ушли. Это утечка ПДн, поэтому нужна эскалация.
+
+debrief:
+  name: Snowflake (2024)
+  text: >-
+    Группа UNC5537 входила в клиентские учётные записи Snowflake с паролями из логов инфостилеров.
+    На этих УЗ не было MFA и ограничений по IP. Пострадали около 165 организаций, в том числе AT&T и Ticketmaster.

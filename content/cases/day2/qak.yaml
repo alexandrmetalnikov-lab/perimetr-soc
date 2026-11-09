@@ -1,0 +1,80 @@
+id: qak
+day: 2
+order: 4
+kind: email
+type: Письмо
+title: "Re: Акт сверки за октябрь"
+truth: attack
+chain: true
+outcomes: { allow: miss, block: ok, escalate: best }
+par: 2
+fx:
+  allow: { chain: foothold }
+  block: { chain: blocked }
+  escalate: { chain: contained }
+
+layers:
+  - { id: addr, label: Адрес отправителя, cost: 2 }
+  - { id: props, label: Свойства письма, cost: 10 }
+  - { id: source, label: Исходный текст, cost: 15 }
+  - { id: whois, label: WHOIS и репутация домена, cost: 15 }
+  - { id: sandbox, label: Песочница для вложения, cost: 45, needs: sandbox }
+
+email:
+  sender: kuznetsova
+  avatar: ЕК
+  from_name: Елена Кузнецова
+  from_addr: { layer: addr, text: "[[q.from|e.kuznetsova@vinoteca-sol.es]]" }
+  to: buh@sevterminal.ru
+  time: сегодня, 11:52
+  body: |
+    Добрый день!
+
+    В первой версии акта ошибка в сумме, исправленный во вложении. Архив под паролем, как обычно: [[q.pass|2611]].
+
+    Елена Кузнецова
+  quote: |
+    От: Елена Кузнецова · сегодня, 09:40
+    Добрый день! Акт сверки за октябрь во вложении. Если будут расхождения, напишите.
+
+    От: buh@sevterminal.ru · 28.10.2026
+    Елена, добрый день! Пришлите, пожалуйста, акт сверки за октябрь.
+  attachment: "[[q.zip|Akt_sverki_ispr.zip · 2,1 МБ · защищён паролем]]"
+
+blocks:
+  - layer: props
+    headers:
+      - ["Reply-To", "e.kuznetsova@vinoteca-sol.es"]
+      - ["Authentication-Results", "[[q.auth|spf=pass; dkim=pass (d=vinoteca-sol.es); dmarc=pass]]"]
+  - layer: source
+    headers:
+      - ["Received", "from mail.vinoteca-sol.es ([88.27.141.6]) · Испания, сайт винного магазина"]
+  - layer: whois
+    note: vinoteca-sol.es · зарегистрирован в 2014 · репутация чистая, 2 жалобы на рассылку за сутки
+  - layer: sandbox
+    at: bottom
+    note: ZIP → Akt_sverki_ispr.lnk → cmd.exe → curl загружает DLL с 194.165.16.77 → rundll32.exe · выход в сеть каждые 5 минут
+
+evidence:
+  - ["q.from", "ref.lp.domain", "Имя Кузнецовой, но письмо пришло с чужого домена"]
+  - ["q.from", "threat.thread", "Ответ в существующую переписку с постороннего адреса"]
+  - ["q.zip", "threat.thread", "Архив под паролем в ответе на переписку"]
+  - ["q.pass", "threat.thread", "Архив под паролем в ответе на переписку"]
+
+call:
+  label: Позвонить Кузнецовой по номеру из договора
+  person: kuznetsova
+  text: "Е. Кузнецова: «После утреннего письма я ничего не отправляла. Архивы с паролем мы не присылаем»."
+  finding: Кузнецова не отправляла это письмо
+
+key: >-
+  Слой «Адрес отправителя»: имя Кузнецовой, а домен чужой. SPF и DKIM проходят, потому что письмо
+  отправлено с настоящего взломанного сервера. Эскалация лучше блокировки: такие письма приходят сразу многим.
+
+debrief:
+  label: Шаг 1 сквозной атаки
+  name: "Qakbot: ответ в переписку"
+  text: >-
+    Qakbot в 2022–2023 годах рассылался ответами в настоящие цепочки писем, украденные у прежних жертв.
+    Отправителем был посторонний взломанный ящик, вложением — архив с паролем, внутри — ярлык, загружающий
+    DLL. Чем это обернётся, покажут следующие смены.

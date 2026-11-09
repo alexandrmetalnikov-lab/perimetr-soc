@@ -10,7 +10,7 @@ Vite + Svelte 5 (руны) + TypeScript. Звук — пока синтез в `
 
 ## Правила
 
-- В `main` не коммитим: ветка + pull request. Перед PR: `npm run content:check && npm run check && npm run build`.
+- В `main` не коммитим: ветка + pull request. Перед PR: `npm run content:check && npm test && npm run check && npm run build`.
 - Контент (кейсы, регламенты, справочники) живёт в `content/*.yaml`, не в коде. Формат — `content/README.md`.
 - Каждый кейс: решение выводится из того, что на экране и в справочнике; у атаки есть легитимный двойник;
   в разборе — реальный инцидент и источник. Факты об инцидентах проверять, не выдумывать.
