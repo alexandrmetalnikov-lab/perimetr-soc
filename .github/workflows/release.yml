@@ -23,6 +23,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run content:check
+      - run: npm test
       - run: npm run build
       - name: Архив для itch.io
         run: cd dist && zip -qr "../perimetr-soc-${GITHUB_REF_NAME}.zip" .

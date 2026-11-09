@@ -1,0 +1,62 @@
+id: lp2
+day: 2
+order: 2
+kind: email
+type: Письмо
+title: "Re: Акт сверки за октябрь"
+truth: legit
+outcomes: { allow: ok, block: false_block, escalate: false_block }
+par: 2
+
+layers:
+  - { id: addr, label: Адрес отправителя, cost: 2 }
+  - { id: props, label: Свойства письма, cost: 10 }
+  - { id: source, label: Исходный текст, cost: 15 }
+  - { id: whois, label: WHOIS и репутация домена, cost: 15 }
+  - { id: sandbox, label: Песочница для вложения, cost: 45, needs: sandbox }
+
+email:
+  sender: kuznetsova
+  avatar: ЕК
+  from_name: Елена Кузнецова
+  from_addr: { layer: addr, text: "e.kuznetsova@[[lp2.from|logplus.ru]]" }
+  to: buh@sevterminal.ru
+  time: сегодня, 09:40
+  body: |
+    Добрый день!
+
+    Акт сверки за октябрь во вложении. Если будут расхождения, напишите.
+
+    Елена Кузнецова
+    +7 812 300-45-61
+  quote: |
+    От: buh@sevterminal.ru · 28.10.2026
+    Елена, добрый день! Пришлите, пожалуйста, акт сверки за октябрь.
+  attachment: Akt_sverki_oktyabr_2026.pdf · 212 КБ
+
+blocks:
+  - layer: props
+    headers:
+      - ["Authentication-Results", "spf=pass; dkim=pass (d=logplus.ru); dmarc=pass"]
+  - layer: source
+    headers:
+      - ["Received", "from mx1.logplus.ru (mx1.logplus.ru [91.215.40.12])"]
+  - layer: whois
+    note: logplus.ru · зарегистрирован 14.03.2011 · репутация чистая
+  - layer: sandbox
+    at: bottom
+    note: PDF, 3 страницы · активного содержимого и ссылок нет
+
+call:
+  label: Позвонить Кузнецовой по номеру из договора
+  person: kuznetsova
+  text: "Е. Кузнецова: «Да, акт отправила утром»."
+
+key: >-
+  Слой «Адрес отправителя»: письмо пришло с домена контрагента из договора.
+  Реквизиты не меняются, вложение — обычный PDF.
+
+debrief:
+  label: Легитимный двойник
+  name: Двойник кейса Qakbot
+  text: Настоящий ответ в переписку. Тот же адрес, что в договоре, обычный PDF, без пароля и срочности.

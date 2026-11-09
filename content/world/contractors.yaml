@@ -1,0 +1,70 @@
+# Справочник «Контрагенты и ПО». day — с какой смены запись появляется в справочнике.
+contractors:
+  - id: ts
+    day: 1
+    name: ООО «ТехСнаб»
+    contract: договор № 214/25
+    lines:
+      - "Домен: [[ref.ts.domain|tehsnab.ru]]"
+      - "Контакт: Сергей Павлов, [[ref.ts.phone|+7 495 410-22-17]]"
+
+  - id: lp
+    day: 1
+    name: ООО «Логистик Плюс»
+    contract: договор № 87/24
+    lines:
+      - "Домен: [[ref.lp.domain|logplus.ru]]"
+      - "Контакт: Елена Кузнецова, [[ref.lp.phone|+7 812 300-45-61]]"
+    warning:
+      day: 3
+      text: "[[ref.lp.status|04.11 сообщили о взломе почты. Домен временно недоверенный]]"
+
+  - id: ds
+    day: 2
+    name: ООО «ДатаСервис»
+    contract: договор № 31/26 до 31.12.2026
+    lines:
+      - Поддержка облачной CRM · NDA № 12/26 действует
+      - "IP-адреса: [[ref.ds.ip|212.48.10.0/24]]"
+
+software:
+  - id: docflow
+    day: 1
+    name: DocFlow Client 8.1.3
+    lines:
+      - "SHA-256 установщика: [[ref.df.hash|4c1d9a07…e72b]]"
+      - "Домены вендора: [[ref.df.dom|*.docflow.ru]]"
+
+  - id: netwatch
+    day: 1
+    name: NetWatch Monitor 5.2.1
+    lines:
+      - "SHA-256 NetWatch.Core.dll: [[ref.nw.hash|9f3c51b8…a41e]]"
+      - "Домены вендора: [[ref.nw.dom|*.netwatch.io]]"
+
+  - id: scanner
+    day: 2
+    name: Сканер уязвимостей SEC-SCAN-01
+    lines:
+      - "IP: [[ref.scan.ip|10.0.5.20]]"
+      - "Окна сканирования: [[ref.scan.win|вт и чт 10:00–13:00]]"
+
+# Матрица доступа: вкладка «Доступ» появляется со смены day.
+access_matrix:
+  day: 2
+  rows:
+    - role: Бухгалтер
+      allows: 1С:Бухгалтерия (пользователь), \\fs01\buh
+      approver: "[[ref.m.buh|главный бухгалтер]]"
+    - role: Менеджер по продажам
+      allows: CRM (пользователь)
+      approver: "[[ref.m.sales|руководитель продаж]]"
+    - role: Администратор 1С, админ-права
+      allows: "[[ref.m.admin|только сотрудники ИТ]]"
+      approver: руководитель ИТ
+    - role: Выгрузка данных из CRM
+      allows: по заявке с обоснованием
+      approver: "[[ref.m.export|коммерческий директор и ИБ]]"
+    - role: Подрядчик
+      allows: "[[ref.m.contractor|только системы из договора, срок не дольше договора]]"
+      approver: владелец системы

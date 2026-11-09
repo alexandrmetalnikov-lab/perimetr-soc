@@ -1,0 +1,64 @@
+id: lp
+day: 1
+order: 1
+kind: email
+type: Письмо
+title: Изменение банковских реквизитов с 01.12.2026
+truth: legit
+outcomes: { allow: ok, block: false_block, escalate: false_block }
+requires_call: true
+par: 0
+
+layers:
+  - { id: addr, label: Адрес отправителя, cost: 2 }
+  - { id: props, label: Свойства письма, cost: 10 }
+  - { id: source, label: Исходный текст, cost: 15 }
+  - { id: whois, label: WHOIS и репутация домена, cost: 15 }
+  - { id: sandbox, label: Песочница для вложения, cost: 45, needs: sandbox }
+
+email:
+  sender: kuznetsova
+  avatar: ЕК
+  from_name: Елена Кузнецова
+  from_addr: { layer: addr, text: "e.kuznetsova@[[lp.from|logplus.ru]]" }
+  to: buh@sevterminal.ru
+  time: сегодня, 09:14
+  body: |
+    Уважаемые коллеги!
+
+    Сообщаем, что с 01.12.2026 ООО «Логистик Плюс» переходит на обслуживание в другой банк. Счета, выставленные до 30.11, оплачиваются по прежним реквизитам. Уведомление на бланке за подписью генерального директора во вложении, оригинал направлен почтой.
+
+    С уважением,
+    Елена Кузнецова, главный бухгалтер
+    [[lp.phone|+7 812 300-45-61]]
+  attachment: Uvedomlenie_rekvizity_LP.pdf · 184 КБ
+
+blocks:
+  - layer: props
+    headers:
+      - ["Reply-To", "[[lp.reply|e.kuznetsova@logplus.ru]]"]
+      - ["Authentication-Results", "[[lp.auth|spf=pass; dkim=pass (d=logplus.ru); dmarc=pass]]"]
+  - layer: source
+    headers:
+      - ["Received", "from mx1.logplus.ru (mx1.logplus.ru [91.215.40.12]) · тот же MX, что в прошлой переписке"]
+  - layer: whois
+    note: logplus.ru · зарегистрирован 14.03.2011 · репутация чистая
+  - layer: sandbox
+    at: bottom
+    note: PDF, 2 страницы · активного содержимого и ссылок нет · сетевой активности нет
+
+call:
+  label: Позвонить Кузнецовой по номеру из договора
+  person: kuznetsova
+  text: "Е. Кузнецова: «Да, уведомление наше, оригинал ушёл почтой». Смена реквизитов подтверждена."
+
+key: >-
+  Слои не нужны: регламент требует звонка по контакту из договора, и только звонок решает кейс.
+  Чистые заголовки и WHOIS не доказывают, что реквизиты меняет сам контрагент.
+
+debrief:
+  label: Легитимный двойник
+  name: Двойник BEC-кейса
+  text: >-
+    Реальные смены реквизитов случаются. Правильная проверка не зависит от того, как выглядит письмо:
+    звонок по контакту из договора, а не из подписи.

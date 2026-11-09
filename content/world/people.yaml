@@ -1,0 +1,69 @@
+# Кадровая система. status — по сменам: ключ = с какой смены действует значение.
+# portrait — файл в public/assets/portraits (если есть).
+staff:
+  - id: belov
+    name: Белов Андрей
+    dept: ИТ
+    status: { 1: "[[ref.belov.status|Уволен 14.03.2026]]" }
+    phone: "—"
+
+  - id: zaytseva
+    name: Зайцева Ольга
+    dept: Бухгалтерия
+    status:
+      1: "[[ref.zaytseva.status|Вышла на работу 02.11.2026 после отпуска по уходу за ребёнком]]"
+      2: "[[ref.zaytseva.status|Работает]]"
+    phone: +7 926 118-40-92
+    portrait: p-zaytseva.webp
+
+  - id: ivanov
+    name: Иванов Пётр
+    dept: ИТ · таб. 0417
+    status: { 1: "[[ref.ivanov.status|В командировке (Казань) до 06.11]]" }
+    phone: "[[ref.ivanov.phone|+7 916 555-10-20]]"
+
+  - id: kovaleva
+    name: Ковалёва Татьяна
+    dept: главный бухгалтер
+    status: { 1: Работает }
+    phone: +7 926 400-12-55
+
+  - id: kozlov
+    name: Козлов Дмитрий
+    dept: "[[ref.kozlov.dept|Отдел продаж]]"
+    status: { 1: Работает }
+    phone: +7 925 781-33-90
+
+  - id: orlova
+    name: Орлова Мария
+    dept: помощник генерального директора
+    status:
+      1: "[[ref.orlova.status|Работает]]"
+      3: "[[ref.orlova.status|В командировке (Новосибирск) до 06.11]]"
+    phone: "[[ref.orlova.phone|+7 915 640-22-81]]"
+    portrait: p-orlova.webp
+
+  - id: smirnova
+    name: Смирнова Анна
+    dept: Финансы · таб. 0288
+    status: { 1: "[[ref.smirnova.status|В отпуске до 15.11]]" }
+    phone: "[[ref.smirnova.phone|+7 903 222-41-07]]"
+
+managers:
+  day: 2
+  list:
+    - Соколов Артём · руководитель ИТ
+    - Лебедев Кирилл · руководитель продаж
+    - Фролова Ирина · коммерческий директор, владелец CRM
+
+it_support: "[[ref.it.contact|Только внутренний номер 1100 и портал sd.sevterminal.ru. С внешних номеров и в мессенджерах ИТ не пишет.]]"
+
+# Внешние персонажи, которые не входят в кадровую систему, но появляются в кейсах.
+external:
+  - id: kuznetsova
+    name: Елена Кузнецова
+    org: ООО «Логистик Плюс», главный бухгалтер
+    portrait: p-kuznetsova.webp
+  - id: pavlov
+    name: Сергей Павлов
+    org: ООО «ТехСнаб», бухгалтерия

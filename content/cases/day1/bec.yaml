@@ -1,10 +1,12 @@
 id: bec
 day: 1
+order: 3
 kind: email
+type: Письмо
 title: "СРОЧНО: смена реквизитов, оплата счёта № 1187 до конца дня"
-truth: attack            # attack | legit | policy
+truth: attack
 outcomes: { allow: miss, block: best, escalate: ok }
-par: 0                   # сколько минут изучения достаточно для бонуса «экономно»
+par: 0
 
 layers:
   - { id: addr, label: Адрес отправителя, cost: 2 }
@@ -19,13 +21,6 @@ email:
   from_addr: { layer: addr, text: "buh@[[bec.from|tehsnab-pay.ru]]" }
   to: buh@sevterminal.ru
   time: сегодня, 10:02
-  headers:
-    - { layer: props, name: Reply-To, value: "[[bec.reply|tehsnab.buh@gmail.com]]" }
-    - { layer: props, name: Authentication-Results, value: "spf=pass (smtp.mailfrom=tehsnab-pay.ru); dkim=none; dmarc=none" }
-    - { layer: source, name: Received, value: "from mail.tehsnab-pay.ru ([45.137.21.9]) · VPS-хостинг" }
-  notes:
-    - { layer: whois, text: "[[bec.whois|tehsnab-pay.ru · зарегистрирован 27.10.2026, 6 дней назад]] · в TI упоминаний нет" }
-    - { layer: sandbox, text: "PDF, 1 страница: таблица реквизитов · активного содержимого и ссылок нет · сетевой активности нет" }
   body: |
     Добрый день!
 
@@ -36,15 +31,30 @@ email:
     [[bec.phone|+7 499 113-08-52]]
   attachment: Novye_rekvizity_schet_1187.pdf · 96 КБ
 
+blocks:
+  - layer: props
+    headers:
+      - ["Reply-To", "[[bec.reply|tehsnab.buh@gmail.com]]"]
+      - ["Authentication-Results", "[[bec.auth|spf=pass (smtp.mailfrom=tehsnab-pay.ru); dkim=none; dmarc=none]]"]
+  - layer: source
+    headers:
+      - ["Received", "from mail.tehsnab-pay.ru ([45.137.21.9]) · VPS-хостинг"]
+  - layer: whois
+    note: "[[bec.whois|tehsnab-pay.ru · зарегистрирован 27.10.2026, 6 дней назад]] · в TI упоминаний нет"
+  - layer: sandbox
+    at: bottom
+    note: "PDF, 1 страница: таблица реквизитов · активного содержимого и ссылок нет · сетевой активности нет"
+
 evidence:
-  - [bec.phone, ref.ts.phone, Телефон в подписи не совпадает с телефоном из договора]
-  - [bec.from, ref.ts.domain, Домен отправителя не совпадает с доменом контрагента по договору]
-  - [bec.whois, ref.ts.domain, Домен зарегистрирован неделю назад и не совпадает с доменом из договора]
-  - [bec.from, bec.reply, "Ответы уходят на сторонний ящик: Reply-To не совпадает с From"]
-  - [bec.reply, ref.ts.domain, "Ответы уходят на сторонний ящик: Reply-To не совпадает с From"]
+  - ["bec.phone", "ref.ts.phone", "Телефон в подписи не совпадает с телефоном из договора"]
+  - ["bec.from", "ref.ts.domain", "Домен отправителя не совпадает с доменом контрагента по договору"]
+  - ["bec.whois", "ref.ts.domain", "Домен зарегистрирован неделю назад и не совпадает с доменом из договора"]
+  - ["bec.from", "bec.reply", "Ответы уходят на сторонний ящик: Reply-To не совпадает с From"]
+  - ["bec.reply", "ref.ts.domain", "Ответы уходят на сторонний ящик: Reply-To не совпадает с From"]
 
 call:
   label: Позвонить Павлову по номеру из договора
+  person: pavlov
   text: "С. Павлов: «Реквизиты не менялись, никаких писем мы не отправляли»."
   finding: Контрагент не подтвердил смену реквизитов
 
@@ -53,7 +63,6 @@ key: >-
   Песочница здесь бесполезна: в BEC нет вредоноса, атака целиком в тексте.
 
 debrief:
-  label: Основано на реальном инциденте
   name: Дело Римасаускаса против Google и Facebook (2013–2015)
   text: >-
     Эвалдас Римасаускас выдавал себя за тайваньского производителя Quanta Computer и отправлял двум

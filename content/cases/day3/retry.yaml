@@ -1,0 +1,77 @@
+id: retry
+day: 3
+order: 4
+when: { flags: { chain: blocked } }
+kind: email
+type: Письмо
+title: "Re: Отгрузка по договору 214/25"
+truth: attack
+chain: true
+outcomes: { allow: miss, block: ok, escalate: best }
+par: 2
+fx:
+  allow: { retry: missed }
+  block: { retry: blocked }
+  escalate: { retry: escalated }
+
+layers:
+  - { id: addr, label: Адрес отправителя, cost: 2 }
+  - { id: link, label: Реальный адрес ссылки, cost: 2 }
+  - { id: props, label: Свойства письма, cost: 10 }
+  - { id: source, label: Исходный текст, cost: 15 }
+  - { id: whois, label: WHOIS и репутация домена, cost: 15 }
+  - { id: sandbox, label: Песочница для ссылки, cost: 45, needs: sandbox }
+
+email:
+  avatar: СП
+  from_name: Сергей Павлов
+  from_addr: { layer: addr, text: "[[a.from|s.pavlov@kolesa-market.kz]]" }
+  to: buh@sevterminal.ru
+  time: сегодня, 11:18
+  flag: { upgrade: training, text: Сотрудник бухгалтерии нажал «Сообщить о фишинге» и не стал открывать ссылку. }
+  body: |
+    Добрый день!
+
+    Документы по отгрузке выложил на диск, архив большой, почтой не прошёл:
+  link: { label: Открыть документы, layer: link, url: "[[a.url|https://docs-share.top/d/8fk2Q/Otgruzka.zip]]" }
+  signature: Сергей Павлов
+  quote: |
+    От: buh@sevterminal.ru · 30.10.2026
+    Сергей, когда ждать документы по отгрузке?
+
+blocks:
+  - layer: props
+    headers:
+      - ["Authentication-Results", "spf=pass; dkim=pass (d=kolesa-market.kz); dmarc=pass"]
+  - layer: source
+    headers:
+      - ["Received", "from mail.kolesa-market.kz ([92.46.108.3]) · Казахстан, интернет-магазин"]
+  - layer: whois
+    note: |
+      kolesa-market.kz · зарегистрирован в 2017 · чисто
+      docs-share.top · зарегистрирован 3 дня назад
+  - layer: sandbox
+    at: bottom
+    note: По ссылке ZIP → Otgruzka.lnk → загрузка DLL с 194.165.16.77 → rundll32.exe · тот же загрузчик, что во вторник
+
+evidence:
+  - ["a.from", "ref.ts.domain", "Имя Павлова, но письмо пришло с чужого домена"]
+  - ["a.from", "threat.thread", "Ответ в существующую переписку с постороннего адреса"]
+  - ["a.url", "threat.thread", "Ссылка на архив в ответе на переписку"]
+
+call:
+  label: Позвонить Павлову по номеру из договора
+  person: pavlov
+  text: "С. Павлов: «Документы по отгрузке мы шлём через ЭДО, никаких дисков»."
+  finding: Павлов не отправлял это письмо
+
+key: >-
+  Слой «Адрес отправителя»: та же схема, что во вторник, но другой контрагент и ссылка вместо вложения.
+  Первое письмо заблокировали без эскалации, вторая линия о кампании не знала, и атакующий попробовал снова.
+
+debrief:
+  label: Шаг 1 сквозной атаки, вторая попытка
+  name: "Qakbot: новая приманка"
+  text: >-
+    Операторы Qakbot меняли приманки: архивы, ссылки, HTML-файлы. Блокировка одного письма без эскалации
+    кампанию не останавливает.
