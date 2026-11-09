@@ -45,6 +45,9 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | p-boss | `art-src/portraits/p-boss.png` | базовый портрет |
 | p-caller-unknown-f | `art-src/portraits/p-caller-unknown-f.png` | силуэт без лица, женский |
 | p-colleague | `art-src/portraits/p-colleague.png` | базовый портрет, волосы перекрашены в рыжий |
+| obj-stamp-allow | `art-src/obj/obj-stamp-allow.png` | штамп «Пропустить», зелёный |
+| obj-stamp-block | `art-src/obj/obj-stamp-block.png` | штамп «Блокировать», красный |
+| obj-stamp-escalate | `art-src/obj/obj-stamp-escalate.png` | штамп «Эскалировать», янтарный, фон и цвет доработаны |
 
 ## Какие предметы генерировать отдельно
 
@@ -66,3 +69,8 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 Если персонаж всё же вышел похожим, волосы можно перекрасить (в чёрный или в любой цвет): `scripts/recolor-hair.py` с маской-полигоном
 (примеры — `art-src/probes/*.mask.json`). Если приложить только портрет,
 ChatGPT копирует и его манеру. Рабочий промпт — в `art-src/portraits/p-kuznetsova.md`.
+
+## Если ChatGPT нарисовал шахматку вместо прозрачного фона
+
+Бывает, что «прозрачность» нарисована прямо в картинке серо-белыми клетками. Проверить просто: открыть PNG
+в любом редакторе на тёмном фоне. Исправить — `scripts/remove-fake-checker.py` (нужен Python с numpy, pillow, scipy).
