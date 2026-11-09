@@ -8,6 +8,14 @@
 Vite + Svelte 5 (руны) + TypeScript. Звук — пока синтез в `src/lib/audio.ts`, дальше файлы. Сборка с `base: './'`,
 одна и та же `dist/` идёт на GitHub Pages и в архив для itch.io.
 
+## Устройство
+
+- `src/content/` — загрузка YAML, типы, помощники (условия, улики, значения по сменам).
+- `src/game/engine.ts` — правила игры без DOM, покрыты тестами `engine.test.ts`. Любая правка правил — сначала тест.
+- `src/game/Game.svelte` — сцена, смена, оверлеи (утро, отчёт, бюджет, финал); `CaseDoc` — объект на столе;
+  `Binder` — справочник; `Rich` — текст с уликами `[[ключ|текст]]`.
+- Сохранение — в localStorage между сменами (`toSave`/`fromSave`), смена при загрузке начинается с утра.
+
 ## Правила
 
 - В `main` не коммитим: ветка + pull request. Перед PR: `npm run content:check && npm test && npm run check && npm run build`.
