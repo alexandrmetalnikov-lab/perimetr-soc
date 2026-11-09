@@ -39,6 +39,15 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | p-kuznetsova | `art-src/portraits/p-kuznetsova.png` | базовый портрет |
 | p-zaytseva | `art-src/portraits/p-zaytseva.png` | базовый портрет |
 | p-orlova | `art-src/portraits/p-orlova.png` | базовый портрет, волосы перекрашены |
+| p-ivanov | `art-src/portraits/p-ivanov.png` | базовый портрет |
+| p-kozlov | `art-src/portraits/p-kozlov.png` | базовый портрет, волосы перекрашены |
+| p-caller-unknown-m | `art-src/portraits/p-caller-unknown-m.png` | силуэт без лица, мужской |
+| p-boss | `art-src/portraits/p-boss.png` | базовый портрет |
+| p-caller-unknown-f | `art-src/portraits/p-caller-unknown-f.png` | силуэт без лица, женский |
+| p-colleague | `art-src/portraits/p-colleague.png` | базовый портрет, волосы перекрашены в рыжий |
+| obj-stamp-allow | `art-src/obj/obj-stamp-allow.png` | штамп «Пропустить», зелёный |
+| obj-stamp-block | `art-src/obj/obj-stamp-block.png` | штамп «Блокировать», красный |
+| obj-stamp-escalate | `art-src/obj/obj-stamp-escalate.png` | штамп «Эскалировать», янтарный, фон и цвет доработаны |
 
 ## Какие предметы генерировать отдельно
 
@@ -56,5 +65,12 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 К запросу прикладываются **две** картинки, и роли называются прямо: «Image 1 is the character, image 2 is the art style».
 Первая — портрет персонажа (внешность), вторая — эталонный стол (стиль).
 Каждому персонажу нужен свой силуэт: цвет волос, причёска, одежда, возраст. ChatGPT тяготеет к одному типажу,
-поэтому отличительные черты прописываются явно. Если приложить только портрет,
+поэтому отличительные черты прописываются явно.
+Если персонаж всё же вышел похожим, волосы можно перекрасить (в чёрный или в любой цвет): `scripts/recolor-hair.py` с маской-полигоном
+(примеры — `art-src/probes/*.mask.json`). Если приложить только портрет,
 ChatGPT копирует и его манеру. Рабочий промпт — в `art-src/portraits/p-kuznetsova.md`.
+
+## Если ChatGPT нарисовал шахматку вместо прозрачного фона
+
+Бывает, что «прозрачность» нарисована прямо в картинке серо-белыми клетками. Проверить просто: открыть PNG
+в любом редакторе на тёмном фоне. Исправить — `scripts/remove-fake-checker.py` (нужен Python с numpy, pillow, scipy).

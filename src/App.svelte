@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Scene from './scene/Scene.svelte';
-  let view = $state<'title' | 'scene'>('title');
+  import Game from './game/Game.svelte';
+  let view = $state<'title' | 'game'>('title');
 </script>
 
 {#if view === 'title'}
@@ -9,13 +9,13 @@
     <h1>ПЕРИМЕТР</h1>
     <p class="lead">Игра для специалистов по ИБ в духе Papers, Please. Письма, логи, звонки в helpdesk и заявки на доступ, основанные на реальных инцидентах.</p>
     <div class="actions">
-      <a class="btn primary" href="prototypes/perimetr-v0.html">Играть прототип · 3 смены</a>
-      <button class="btn" type="button" onclick={() => (view = 'scene')}>Новая сцена · в разработке</button>
+      <button class="btn primary" type="button" onclick={() => (view = 'game')}>Играть · 3 смены</button>
+      <a class="btn" href="prototypes/perimetr-v0.html">Старый прототип</a>
     </div>
-    <p class="small">Прототип собран в чате и сохранён как есть. Новая версия с графикой и звуком строится здесь.</p>
+    <p class="small">Новая версия на сгенерированных столах и портретах. Прогресс сохраняется между сменами. Старый прототип оставлен для сравнения.</p>
   </main>
 {:else}
-  <Scene onexit={() => (view = 'title')} />
+  <Game onexit={() => (view = 'title')} />
 {/if}
 
 <style>

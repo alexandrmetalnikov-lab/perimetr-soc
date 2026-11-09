@@ -21,6 +21,7 @@ staff:
     dept: ИТ · таб. 0417
     status: { 1: "[[ref.ivanov.status|В командировке (Казань) до 06.11]]" }
     phone: "[[ref.ivanov.phone|+7 916 555-10-20]]"
+    portrait: p-ivanov.webp
 
   - id: kovaleva
     name: Ковалёва Татьяна
@@ -33,6 +34,7 @@ staff:
     dept: "[[ref.kozlov.dept|Отдел продаж]]"
     status: { 1: Работает }
     phone: +7 925 781-33-90
+    portrait: p-kozlov.webp
 
   - id: orlova
     name: Орлова Мария
@@ -67,3 +69,20 @@ external:
   - id: pavlov
     name: Сергей Павлов
     org: ООО «ТехСнаб», бухгалтерия
+  - id: unknown_m
+    name: Неизвестный звонящий
+    portrait: p-caller-unknown-m.webp
+  - id: unknown_f
+    name: Неизвестная звонящая
+    portrait: p-caller-unknown-f.webp
+
+# Команда SOC — свои люди игрока.
+team:
+  - id: boss
+    name: Начальник SOC
+    role: ведёт разбор смены, принимает решения по эскалациям
+    portrait: p-boss.webp
+  - id: colleague
+    name: Коллега со второй линии
+    role: принимает эскалации
+    portrait: p-colleague.webp

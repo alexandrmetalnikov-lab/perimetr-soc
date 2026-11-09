@@ -84,7 +84,7 @@ export interface Case {
 export interface Entry { key: string; day: number; text: string }
 
 export interface Person {
-  id: string; name: string; dept?: string; org?: string;
+  id: string; name: string; dept?: string; org?: string; role?: string;
   status?: Record<number, string>; phone?: string; portrait?: string;
 }
 
@@ -104,6 +104,7 @@ export interface World {
   escalationsPerShift: number;
   staff: Person[];
   external: Person[];
+  team: Person[];
   managers: { day: number; list: string[] };
   itSupport: string;
   contractors: Contractor[];

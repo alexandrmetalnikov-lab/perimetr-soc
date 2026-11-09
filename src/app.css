@@ -2,7 +2,7 @@
 :root{
   --night:#0e1424; --night-2:#16223a; --ink:#e6dfcd; --soft:#97a0b0; --line:#2c3850;
   --lamp:#e0a046; --mon:#4fb3b0; --paper:#e8e0cb; --paper-ink:#23221d; --alarm:#c4382c; --ok:#5f8f4e;
-  --stamp-allow:#4c7a3c; --stamp-block:#a8352b; --stamp-esc:#b7791f;
+  --mark:#e7c64a; --stamp-allow:#4c7a3c; --stamp-block:#a8352b; --stamp-esc:#b7791f;
   --f-display:"Rubik Mono One","Arial Black",system-ui,sans-serif;
   --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -18,3 +18,11 @@ button{font:inherit;cursor:pointer}
 button:focus-visible,a:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
 a{color:var(--lamp)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* Поля-улики режима инспекции (компонент Rich) */
+.f{border-radius:2px;transition:background .15s,box-shadow .15s}
+.inspecting .f{cursor:crosshair;box-shadow:0 0 0 1px rgba(183,121,31,.55);background:rgba(231,198,74,.14)}
+.inspecting .f:hover,.inspecting .f:focus-visible{background:rgba(231,198,74,.38);outline:none}
+.f.sel{background:var(--mark)!important;color:#1d1d16;box-shadow:0 0 0 2px var(--mark)!important}
+.f.hit{background:rgba(76,122,60,.5)!important}
+.f.miss{background:rgba(168,53,43,.45)!important}

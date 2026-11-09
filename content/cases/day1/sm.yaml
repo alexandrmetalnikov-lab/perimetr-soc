@@ -12,7 +12,7 @@ layers:
   - { id: pbx, label: Номер по данным АТС, cost: 5 }
 
 phone_call:
-  caller: unknown
+  caller: unknown_f
   line: helpdesk 1100 · 14:20
   number: { layer: pbx, text: "[[sm.num|+7 966 041-77-35]]" }
   transcript:
