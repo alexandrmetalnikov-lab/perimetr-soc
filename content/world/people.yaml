@@ -21,6 +21,7 @@ staff:
     dept: ИТ · таб. 0417
     status: { 1: "[[ref.ivanov.status|В командировке (Казань) до 06.11]]" }
     phone: "[[ref.ivanov.phone|+7 916 555-10-20]]"
+    portrait: p-ivanov.webp
 
   - id: kovaleva
     name: Ковалёва Татьяна
