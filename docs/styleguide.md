@@ -40,6 +40,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | p-zaytseva | `art-src/portraits/p-zaytseva.png` | базовый портрет |
 | p-orlova | `art-src/portraits/p-orlova.png` | базовый портрет, волосы перекрашены |
 | p-ivanov | `art-src/portraits/p-ivanov.png` | базовый портрет |
+| p-kozlov | `art-src/portraits/p-kozlov.png` | базовый портрет, волосы перекрашены |
 
 ## Какие предметы генерировать отдельно
 
@@ -57,5 +58,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 К запросу прикладываются **две** картинки, и роли называются прямо: «Image 1 is the character, image 2 is the art style».
 Первая — портрет персонажа (внешность), вторая — эталонный стол (стиль).
 Каждому персонажу нужен свой силуэт: цвет волос, причёска, одежда, возраст. ChatGPT тяготеет к одному типажу,
-поэтому отличительные черты прописываются явно. Если приложить только портрет,
+поэтому отличительные черты прописываются явно.
+Если персонаж всё же вышел похожим, волосы можно перекрасить в чёрный: `scripts/recolor-hair.py` с маской-полигоном
+(примеры — `art-src/probes/*.mask.json`). Если приложить только портрет,
 ChatGPT копирует и его манеру. Рабочий промпт — в `art-src/portraits/p-kuznetsova.md`.

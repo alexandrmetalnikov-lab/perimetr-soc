@@ -34,6 +34,7 @@ staff:
     dept: "[[ref.kozlov.dept|Отдел продаж]]"
     status: { 1: Работает }
     phone: +7 925 781-33-90
+    portrait: p-kozlov.webp
 
   - id: orlova
     name: Орлова Мария

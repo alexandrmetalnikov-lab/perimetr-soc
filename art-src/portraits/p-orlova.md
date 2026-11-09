@@ -5,7 +5,7 @@
 - Статус: утверждён 06.11.2026, базовый портрет (уверенная, нетерпеливая, с телефоном)
 - Инструмент: ChatGPT, к запросу приложен `art-src/bg/bg-desk-evening.png` как образец стиля
 - Доработка: ChatGPT сделал её каштановой и слишком похожей на Зайцеву. Волосы перекрашены в чёрный скриптом
-  `scripts/recolor-hair-orlova.py` из оригинала `art-src/probes/p-orlova-brown.png`.
+  `scripts/recolor-hair.py` по маске `art-src/probes/p-orlova.mask.json` из оригинала `art-src/probes/p-orlova-brown.png`.
 - Формат: 2:3, 1024×1536
 
 ## Как отличать героинь
