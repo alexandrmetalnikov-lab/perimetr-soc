@@ -75,3 +75,10 @@ external:
   - id: unknown_f
     name: Неизвестная звонящая
     portrait: p-caller-unknown-f.webp
+
+# Команда SOC — свои люди игрока.
+team:
+  - id: boss
+    name: Начальник SOC
+    role: ведёт разбор смены, принимает решения по эскалациям
+    portrait: p-boss.webp

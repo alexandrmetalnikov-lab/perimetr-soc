@@ -55,8 +55,9 @@ mark(contr.access_matrix?.rows, contr.access_matrix?.day ?? 1);
 
 const dayNums = new Set((camp.days ?? []).map(d => d.n));
 const upgradeIds = new Set((camp.upgrades ?? []).map(u => u.id));
-const personIds = new Set([...(people.staff ?? []), ...(people.external ?? [])].map(p => p.id));
-for (const p of [...(people.staff ?? []), ...(people.external ?? [])]) {
+const allPeople = [...(people.staff ?? []), ...(people.external ?? []), ...(people.team ?? [])];
+const personIds = new Set(allPeople.map(p => p.id));
+for (const p of allPeople) {
   if (p.portrait && !(await exists(`public/assets/portraits/${p.portrait}`))) warn(`${W}/people.yaml`, `портрет ${p.portrait} для ${p.id} ещё не загружен`);
 }
 for (const u of camp.upgrades ?? []) if (!u.name || !(u.cost > 0)) err(`${W}/campaign.yaml`, `покупка ${u.id}: нужны name и cost`);

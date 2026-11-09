@@ -19,7 +19,7 @@ export function loadContent(): Content {
 
   const world: World = {
     rules: rules.rules, threats: rules.threats, escalationsPerShift: rules.escalations_per_shift,
-    staff: people.staff, external: people.external ?? [], managers: people.managers, itSupport: people.it_support,
+    staff: people.staff, external: people.external ?? [], team: people.team ?? [], managers: people.managers, itSupport: people.it_support,
     contractors: contr.contractors, software: contr.software, accessMatrix: contr.access_matrix,
     days: camp.days, news: camp.news ?? [], budget: camp.budget, upgrades: camp.upgrades, chain: camp.chain,
   };
