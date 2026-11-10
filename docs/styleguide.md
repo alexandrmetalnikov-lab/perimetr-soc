@@ -50,6 +50,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | obj-stamp-allow | `art-src/obj/obj-stamp-allow.png` | штамп «Пропустить», зелёный |
 | obj-stamp-block | `art-src/obj/obj-stamp-block.png` | штамп «Блокировать», красный |
 | obj-stamp-escalate | `art-src/obj/obj-stamp-escalate.png` | штамп «Эскалировать», янтарный, фон и цвет доработаны |
+| obj-lamp-off, obj-lamp-on | `art-src/obj/obj-lamp-*.png` | красная лампа алерта, две версии из одной картинки |
 
 ## Какие предметы генерировать отдельно
 
