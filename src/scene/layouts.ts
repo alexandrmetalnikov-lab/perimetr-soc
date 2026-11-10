@@ -25,7 +25,7 @@ export const LAYOUTS: Record<LayoutId, Layout> = {
     phone: { x: 80.2, y: 37, w: 18.8, h: 23 },
     stamps: { x: 77, y: 60.5, w: 22.3, h: 14.5 },
     lamp: { x: 73.3, y: 38.5, w: 6, h: 11.2 },
-    doc: { x: 23.5, y: 48.5, w: 51, h: 49.5 },
+    doc: { x: 20.5, y: 45.5, w: 55.5, h: 53 },
     snow: 'polygon(24% 0,88% 0,88% 37%,80.5% 37%,80.5% 19.5%,24% 19.5%)',
   },
   port: {

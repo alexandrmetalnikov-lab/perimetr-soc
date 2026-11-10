@@ -35,6 +35,13 @@
   let paused = $state(false);
   let busy = $state(false);
   let sound = $state(true);
+  // Размер текста документа и справочника: 1 → 1.15 → 1.3, запоминается в браузере.
+  const ZOOMS = [1, 1.15, 1.3];
+  let zoom = $state(1);
+  function cycleZoom() {
+    zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.length];
+    try { localStorage.setItem('perimetr-soc.zoom', String(zoom)); } catch { /* недоступно */ }
+  }
   let drawer = $state(false);
   let tab = $state<Tab>('rules');
   let answered = $state<string[]>([]);
@@ -162,6 +169,7 @@
 
   // ---------- часы, клавиатура, раскладка ----------
   onMount(() => {
+    try { const z = Number(localStorage.getItem('perimetr-soc.zoom')); if (ZOOMS.includes(z)) zoom = z; } catch { /* недоступно */ }
     try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const v = JSON.parse(raw); if (v?.v === 1 && v.day > 1) save = v; } } catch { /* недоступно */ }
     const onResize = () => (auto = pickLayout());
     addEventListener('resize', onResize);
@@ -195,7 +203,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="game {lid}" class:inspecting={ins.on} onclick={e => onFieldPick(e.target, e)}>
+<div class="game {lid}" class:inspecting={ins.on} style="--zoom:{zoom}" onclick={e => onFieldPick(e.target, e)}>
   <header class="hud">
     <div class="brand"><button class="back" type="button" onclick={onexit} title="В меню">←</button><b>ПЕРИМЕТР</b>
       <span>Смена {shiftNo} из {daysTotal} · {day.date}, {day.dow}</span></div>
@@ -209,12 +217,13 @@
     </div>
     <div class="ctl">
       <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶ Дальше' : '❚❚ Пауза'}</button>
+      <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa {Math.round(zoom * 100)}%</button>
       <button type="button" aria-pressed={!sound} onclick={() => { sound = !sound; setSound(sound); }}>{sound ? '🔊' : '🔇'}</button>
       <button type="button" onclick={() => (forced = lid === 'port' ? 'land' : 'port')} title="Сменить раскладку">{lid === 'port' ? '🖥' : '📱'}</button>
     </div>
   </header>
 
-  <div class="scene" class:shake style="aspect-ratio:{1 / L.ratio};background-image:url({asset(L.bg)})">
+  <div class="scene" class:shake class:binder-open={drawer} style="aspect-ratio:{1 / L.ratio};background-image:url({asset(L.bg)})">
     <canvas class="snow" bind:this={canvas} style="clip-path:{L.snow}"></canvas>
     <div class="spill"></div>
 
@@ -384,7 +393,7 @@
 </div>
 
 <style>
-  .game{max-width:1400px;margin:0 auto;display:grid;gap:10px}
+  .game{margin:0 auto;display:grid;gap:8px}
   .hud{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between}
   .brand{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
   .brand b{font-family:var(--f-display);font-weight:400;font-size:17px;color:var(--paper);letter-spacing:.04em}
@@ -403,7 +412,7 @@
   .ctl button[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
 
   /* сцена вписывается в экран по высоте: шапка и панель действий всегда видны */
-  .scene{position:relative;width:100%;max-width:min(100%,calc((100dvh - 150px) * 1.5));margin:0 auto;container-type:inline-size;overflow:hidden;background:#0b0f18 center/cover no-repeat;user-select:none}
+  .scene{position:relative;width:100%;max-width:min(100%,calc((100dvh - 132px) * 1.5));margin:0 auto;container-type:inline-size;overflow:hidden;background:#0b0f18 center/cover no-repeat;user-select:none}
   .port .scene{max-width:min(100%,560px);margin:0 auto}
   .scene.shake{animation:shake .28s}
   @keyframes shake{20%{transform:translate(.25cqw,.15cqw)}40%{transform:translate(-.2cqw,-.1cqw)}60%{transform:translate(.12cqw,.08cqw)}80%{transform:translate(-.06cqw,0)}}
@@ -448,17 +457,19 @@
   .phone.ring::before{content:"";position:absolute;inset:-1cqw;border-radius:50%;border:.2cqw solid rgba(224,160,70,.6);animation:pulse 1s infinite}
   @keyframes pulse{from{transform:scale(.7);opacity:1}to{transform:scale(1.25);opacity:0}}
 
-  .doc{position:absolute;background:var(--paper);color:var(--paper-ink);font-size:clamp(9px,.9cqw,15px);line-height:1.45;padding:1.2cqw 1.5cqw;transform:rotate(-.8deg);
+  .doc{position:absolute;background:var(--paper);color:var(--paper-ink);font-size:calc(clamp(12.5px,1.05cqw,19px) * var(--zoom,1));line-height:1.45;padding:1.2cqw 1.5cqw;transform:rotate(-.8deg);
     box-shadow:0 1.6cqw 3cqw rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.15);overflow:auto;overscroll-behavior:contain;background-image:linear-gradient(180deg,rgba(224,160,70,.12),transparent 40%);
-    transition:transform .45s cubic-bezier(.2,.7,.2,1),opacity .45s;z-index:1}
+    transition:transform .45s cubic-bezier(.2,.7,.2,1),opacity .45s,translate .35s cubic-bezier(.2,.7,.2,1);z-index:1}
   .doc.out{transform:translateX(60cqw) rotate(10deg);opacity:0}
   .doc.in{transform:translateY(-20cqw) rotate(-6deg);opacity:0}
   .stampspr{position:absolute;width:9cqw;max-width:100%;transform:translate(-50%,-100%);pointer-events:none;z-index:3;animation:drop .95s cubic-bezier(.3,.1,.2,1) forwards;filter:drop-shadow(0 1.2cqw 1.2cqw rgba(0,0,0,.55))}
   @keyframes drop{0%{transform:translate(-50%,-160%) scale(1.15);opacity:0}25%{opacity:1}34%{transform:translate(-50%,-40%) scale(1)}38%{transform:translate(-50%,-38%) scale(1,.94)}55%{transform:translate(-50%,-50%) scale(1)}100%{transform:translate(-50%,-180%) scale(1.1);opacity:0}}
 
-  .drawer{position:absolute;left:0;top:0;bottom:0;width:23%;background:rgba(14,20,36,.97);border-right:1px solid var(--line);transform:translateX(-102%);transition:transform .35s cubic-bezier(.2,.7,.2,1);font-size:clamp(9px,.85cqw,14px);overflow:auto;z-index:4;color:var(--ink)}
+  .drawer{position:absolute;left:0;top:0;bottom:0;width:27%;background:rgba(14,20,36,.97);border-right:1px solid var(--line);transform:translateX(-102%);transition:transform .35s cubic-bezier(.2,.7,.2,1);font-size:calc(clamp(12px,.95cqw,17px) * var(--zoom,1));overflow:auto;z-index:4;color:var(--ink)}
   .drawer.open{transform:none}
-  .bubble{position:absolute;right:2%;top:8%;width:32%;display:flex;gap:1cqw;align-items:flex-start;background:rgba(14,20,36,.96);border:1px solid var(--lamp);padding:1cqw 1.2cqw;font-size:clamp(9px,.9cqw,15px);z-index:5;box-shadow:0 1cqw 2cqw rgba(0,0,0,.5);animation:print .3s ease-out}
+  /* На ПК при открытом справочнике документ отъезжает вправо, чтобы не прятаться под ним. */
+  .game:not(.port) .binder-open .doc{translate:6.8cqw 0}
+  .bubble{position:absolute;right:2%;top:8%;width:32%;display:flex;gap:1cqw;align-items:flex-start;background:rgba(14,20,36,.96);border:1px solid var(--lamp);padding:1cqw 1.2cqw;font-size:clamp(12px,1cqw,17px);z-index:5;box-shadow:0 1cqw 2cqw rgba(0,0,0,.5);animation:print .3s ease-out}
   .bubble b{display:block;font-family:var(--f-mono);font-size:.8em;letter-spacing:.08em;text-transform:uppercase;color:var(--lamp);margin-bottom:.3em;font-weight:500}
   .bava{width:4.5cqw;height:6cqw;flex:none;background:#16223a center/cover;border:1px solid var(--line)}
   .pausecover{position:absolute;inset:0;background:rgba(8,11,20,.55);color:var(--paper);border:0;font-family:var(--f-display);font-size:2cqw;z-index:6}
@@ -532,11 +543,11 @@
   .port .q div:nth-child(n+6){display:none}
   .port .al div{grid-template-columns:7cqw minmax(0,1fr)}
   .port .tip{font-size:2.4cqw;padding:.4cqw .9cqw}
-  .port .doc{font-size:max(11px,2.75cqw);padding:3.2cqw 3.6cqw;transform:none}
+  .port .doc{font-size:calc(max(11px,2.75cqw) * var(--zoom,1));padding:3.2cqw 3.6cqw;transform:none}
   .port .doc.out{transform:translateX(100cqw) rotate(8deg)}
   .port .doc.in{transform:translateY(-30cqw)}
   .port .stampspr{width:22cqw}
-  .port .drawer{width:100%;bottom:auto;height:39%;border-right:0;border-bottom:1px solid var(--line);transform:translateY(-102%);font-size:max(11px,2.8cqw)}
+  .port .drawer{width:100%;bottom:auto;height:39%;border-right:0;border-bottom:1px solid var(--line);transform:translateY(-102%);font-size:calc(max(11px,2.8cqw) * var(--zoom,1))}
   .port .drawer.open{transform:none}
   .port .bubble{left:4%;right:4%;top:auto;bottom:3%;width:auto;font-size:max(11px,2.9cqw);padding:2.5cqw 3cqw}
   .port .bava{width:12cqw;height:16cqw}
