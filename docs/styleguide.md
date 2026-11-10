@@ -45,6 +45,8 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | p-boss | `art-src/portraits/p-boss.png` | базовый портрет |
 | p-caller-unknown-f | `art-src/portraits/p-caller-unknown-f.png` | силуэт без лица, женский |
 | p-colleague | `art-src/portraits/p-colleague.png` | базовый портрет, волосы перекрашены в рыжий |
+| p-kuznetsova-worried, p-kuznetsova-firm | `art-src/portraits/` | эмоции Кузнецовой |
+| p-zaytseva-guilty | `art-src/portraits/` | эмоция Зайцевой |
 | obj-stamp-allow | `art-src/obj/obj-stamp-allow.png` | штамп «Пропустить», зелёный |
 | obj-stamp-block | `art-src/obj/obj-stamp-block.png` | штамп «Блокировать», красный |
 | obj-stamp-escalate | `art-src/obj/obj-stamp-escalate.png` | штамп «Эскалировать», янтарный, фон и цвет доработаны |

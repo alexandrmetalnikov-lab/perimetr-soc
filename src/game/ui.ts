@@ -22,7 +22,11 @@ export const asset = (p: string) => `${base}${p}`;
 export function people(c: Content): Map<string, Person> {
   return new Map([...c.world.staff, ...c.world.external, ...c.world.team].map(p => [p.id, p]));
 }
-export const portraitUrl = (p?: Person) => (p?.portrait ? asset(`assets/portraits/${p.portrait}`) : null);
+/** Портрет персонажа, при наличии — с нужной эмоцией. */
+export function portraitUrl(p?: Person, emotion?: string): string | null {
+  const file = (emotion && p?.emotions?.[emotion]) || p?.portrait;
+  return file ? asset(`assets/portraits/${file}`) : null;
+}
 
 // Фоновый поток SIEM на правом мониторе — атмосфера, не кейсы.
 export const AMBIENT: string[] = [

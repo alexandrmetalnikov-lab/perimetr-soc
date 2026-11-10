@@ -15,6 +15,7 @@ staff:
       2: "[[ref.zaytseva.status|Работает]]"
     phone: +7 926 118-40-92
     portrait: p-zaytseva.webp
+    emotions: { guilty: p-zaytseva-guilty.webp }
 
   - id: ivanov
     name: Иванов Пётр
@@ -66,6 +67,7 @@ external:
     name: Елена Кузнецова
     org: ООО «Логистик Плюс», главный бухгалтер
     portrait: p-kuznetsova.webp
+    emotions: { worried: p-kuznetsova-worried.webp, firm: p-kuznetsova-firm.webp }
   - id: pavlov
     name: Сергей Павлов
     org: ООО «ТехСнаб», бухгалтерия
