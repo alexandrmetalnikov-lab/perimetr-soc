@@ -58,7 +58,8 @@ const upgradeIds = new Set((camp.upgrades ?? []).map(u => u.id));
 const allPeople = [...(people.staff ?? []), ...(people.external ?? []), ...(people.team ?? [])];
 const personIds = new Set(allPeople.map(p => p.id));
 for (const p of allPeople) {
-  if (p.portrait && !(await exists(`public/assets/portraits/${p.portrait}`))) warn(`${W}/people.yaml`, `портрет ${p.portrait} для ${p.id} ещё не загружен`);
+  for (const file of [p.portrait, ...Object.values(p.emotions ?? {})].filter(Boolean))
+    if (!(await exists(`public/assets/portraits/${file}`))) warn(`${W}/people.yaml`, `портрет ${file} для ${p.id} ещё не загружен`);
 }
 for (const u of camp.upgrades ?? []) if (!u.name || !(u.cost > 0)) err(`${W}/campaign.yaml`, `покупка ${u.id}: нужны name и cost`);
 
@@ -140,6 +141,11 @@ for await (const f of files('content/cases')) {
 
   if (!c.call?.label || !c.call?.text) warn(f, 'нет проверки по второму каналу (call)');
   if (c.requires_call && !c.call) err(f, 'requires_call без call');
+  if (c.call?.emotion) {
+    const p = allPeople.find(x => x.id === c.call.person);
+    if (!p) err(f, `call.emotion «${c.call.emotion}» задана, но нет call.person`);
+    else if (!p.emotions?.[c.call.emotion]) err(f, `у персонажа ${p.id} нет эмоции «${c.call.emotion}» (есть: ${Object.keys(p.emotions ?? {}).join(', ') || 'нет'})`);
+  }
   if (!c.debrief?.name || !c.debrief?.text) err(f, 'в debrief нужны name и text');
   if (c.loyalty_cost) for (const d of Object.keys(c.loyalty_cost)) if (!DECISIONS.includes(d)) err(f, `loyalty_cost.${d}: неизвестное решение`);
 }

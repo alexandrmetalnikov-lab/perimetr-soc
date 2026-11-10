@@ -80,7 +80,7 @@
     const call = E.secondChannel(C, s);
     if (!call) return;
     uiClick();
-    bubble = { title: call.label, text: call.text, portrait: portraitUrl(call.person ? P.get(call.person) : undefined) };
+    bubble = { title: call.label, text: call.text, portrait: portraitUrl(call.person ? P.get(call.person) : undefined, call.emotion) };
     setTimeout(() => (bubble = null), 6000);
     checkTime();
   }

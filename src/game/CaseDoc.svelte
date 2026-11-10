@@ -59,7 +59,7 @@
 
 {#if r.called && c.call}
   <div class="callres">
-    {#if portraitUrl(callPerson)}<div class="ava pic" style="background-image:url({portraitUrl(callPerson)})"></div>{/if}
+    {#if portraitUrl(callPerson, c.call.emotion)}<div class="ava pic" style="background-image:url({portraitUrl(callPerson, c.call.emotion)})"></div>{/if}
     <div>
       <div class="ltag">Проверка по второму каналу · {c.call.label}</div>
       {c.call.text}

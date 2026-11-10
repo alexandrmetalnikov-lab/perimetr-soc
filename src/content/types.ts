@@ -86,6 +86,7 @@ export interface Entry { key: string; day: number; text: string }
 export interface Person {
   id: string; name: string; dept?: string; org?: string; role?: string;
   status?: Record<number, string>; phone?: string; portrait?: string;
+  emotions?: Record<string, string>; // эмоция → файл портрета
 }
 
 export interface Contractor {
