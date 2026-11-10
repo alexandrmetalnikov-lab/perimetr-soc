@@ -11,6 +11,7 @@ export interface Layout {
   binder: Rect;        // папка-справочник
   phone: Rect;         // телефон
   stamps: Rect;        // лоток со штампами
+  lamp: Rect;          // красная лампа алерта (спрайт, на столе её нет)
   doc: Rect;           // где лежит документ
   snow: string;        // clip-path области окна для снега
 }
@@ -23,6 +24,7 @@ export const LAYOUTS: Record<LayoutId, Layout> = {
     binder: { x: 0, y: 52.5, w: 20.5, h: 25.5 },
     phone: { x: 80.2, y: 37, w: 18.8, h: 23 },
     stamps: { x: 77, y: 60.5, w: 22.3, h: 14.5 },
+    lamp: { x: 73.3, y: 38.5, w: 6, h: 11.2 },
     doc: { x: 23.5, y: 48.5, w: 51, h: 49.5 },
     snow: 'polygon(24% 0,88% 0,88% 37%,80.5% 37%,80.5% 19.5%,24% 19.5%)',
   },
@@ -33,6 +35,7 @@ export const LAYOUTS: Record<LayoutId, Layout> = {
     binder: { x: 0, y: 42.6, w: 20, h: 14.4 },
     phone: { x: 79, y: 35.7, w: 21, h: 11.3 },
     stamps: { x: 74.6, y: 69.2, w: 25.4, h: 14.8 },
+    lamp: { x: 87, y: 27, w: 9, h: 8.4 },
     doc: { x: 3, y: 39, w: 94, h: 59 },   // на телефоне документ важнее предметов: штампы и папка — в панели снизу
     snow: 'polygon(27% 0,92% 0,92% 22%,27% 22%)',
   },

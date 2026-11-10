@@ -7,7 +7,7 @@
   import Binder from './Binder.svelte';
   import Rich from './Rich.svelte';
   import { LAYOUTS, pickLayout, rectStyle, type LayoutId } from '../scene/layouts';
-  import { stampThunk, uiClick, startRing, stopRing, setSound } from '../lib/audio';
+  import { stampThunk, uiClick, startRing, stopRing, setSound, alarm } from '../lib/audio';
   import { startSnow } from '../lib/snow';
   import { AMBIENT, DECISIONS, STAMP, asset, people, portraitUrl, type Inspect, type Tab } from './ui';
 
@@ -60,6 +60,11 @@
   const spent = $derived(picks.reduce((a, id) => a + (C.world.upgrades.find(u => u.id === id)?.cost ?? 0), 0));
 
   $effect(() => { if (ringing) startRing(); else stopRing(); });
+
+  // Красная лампа: объект с высокой важностью на столе. Зависит только от важности, а не от того, атака это или нет.
+  const alert = $derived(s.phase === 'shift' && !busy && cur?.alert?.severity === 'Высокий');
+  let alarmedFor = '';
+  $effect(() => { if (alert && cur && alarmedFor !== cur.id) { alarmedFor = cur.id; alarm(); } });
 
   // ---------- сообщения ----------
   let slipId = 0;
@@ -229,6 +234,12 @@
         {#each ambientLines as a, i}<div><span>{E.fmtMin(Math.max(0, s.min - i * 3 - 1))}</span><span>{a}</span></div>{/each}
       </div>
     </div>
+
+    <div class="lamp" class:on={alert} style={rectStyle(L.lamp)} aria-hidden="true">
+      <img class="off" src={asset('assets/obj/obj-lamp-off.webp')} alt="" />
+      <img class="lit" src={asset('assets/obj/obj-lamp-on.webp')} alt="" />
+    </div>
+    {#if alert}<div class="redspill" style="--lx:{L.lamp.x + L.lamp.w / 2}%;--ly:{L.lamp.y + L.lamp.h / 2}%" aria-hidden="true"></div>{/if}
 
     <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник · B</span></button>
     <button class="hot phone" class:ring={ringing} type="button" style={rectStyle(L.phone)} onclick={phone} aria-label="Телефон">
@@ -422,6 +433,15 @@
   .stamps button:hover,.stamps button:focus-visible{background:rgba(224,160,70,.14)}
   .stamps .tip{top:auto;bottom:-.4cqw;transform:translate(-50%,100%)}
   .phone{overflow:visible}
+  .lamp{position:absolute;pointer-events:none;filter:drop-shadow(0 .5cqw .6cqw rgba(0,0,0,.6))}
+  .lamp img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;max-width:100%}
+  .lamp .lit{opacity:0}
+  .lamp.on .lit{animation:lampblink 1s steps(1) infinite}
+  .lamp.on{filter:drop-shadow(0 0 1.6cqw rgba(255,40,30,.75))}
+  @keyframes lampblink{0%{opacity:1}55%{opacity:0}}
+  .redspill{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;z-index:0;
+    background:radial-gradient(30cqw 22cqw at var(--lx,76%) var(--ly,44%),rgba(255,30,20,.22),transparent 70%);animation:spill 1s steps(1) infinite}
+  @keyframes spill{55%{opacity:0}}
   .phonecut{position:absolute;inset:0;background-size:100cqw auto;border-radius:.6cqw;pointer-events:none;opacity:0}
   .phone.ring .phonecut{opacity:1;animation:ring .5s infinite}
   @keyframes ring{0%,100%{transform:rotate(0)}15%{transform:rotate(-2.2deg) translateY(-.2cqw)}30%{transform:rotate(2.2deg)}45%{transform:rotate(-1.6deg)}60%{transform:rotate(1.2deg)}75%{transform:rotate(0)}}

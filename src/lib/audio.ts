@@ -50,3 +50,14 @@ export function stopRing() {
   ring.osc.forEach(o => { try { o.stop(); } catch { /* уже остановлен */ } });
   ring = null;
 }
+
+/** Короткая двухтональная тревога, когда на стол приходит объект с высокой важностью. */
+export function alarm() {
+  const a = ac(); if (!a || !enabled) return; const t = a.currentTime;
+  const o = a.createOscillator(), g = a.createGain(); o.type = 'sawtooth';
+  [0, 0.22, 0.44].forEach((d, i) => o.frequency.setValueAtTime(i % 2 ? 620 : 880, t + d));
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.02);
+  g.gain.setValueAtTime(0.05, t + 0.62); g.gain.linearRampToValueAtTime(0, t + 0.7);
+  const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2200;
+  o.connect(f).connect(g).connect(a.destination); o.start(t); o.stop(t + 0.72);
+}
