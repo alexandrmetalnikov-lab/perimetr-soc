@@ -6,7 +6,7 @@
   import CaseDoc from './CaseDoc.svelte';
   import Binder from './Binder.svelte';
   import Rich from './Rich.svelte';
-  import { LAYOUTS, pickLayout, rectStyle, type LayoutId } from '../scene/layouts';
+  import { LAYOUTS, pickLayout, rectStyle, cutBox, clipIn, type LayoutId } from '../scene/layouts';
   import { stampThunk, uiClick, startRing, stopRing, setSound, alarm } from '../lib/audio';
   import { startSnow } from '../lib/snow';
   import { AMBIENT, DECISIONS, STAMP, asset, people, portraitUrl, type Inspect, type Tab } from './ui';
@@ -63,6 +63,16 @@
   const day = $derived(C.world.days.find(d => d.n === s.day)!);
   const findings = $derived(r.findings);
   const tools = $derived({ sandbox: E.hasTool(C, s, 'sandbox'), ti: E.hasTool(C, s, 'ti'), nm: s.upgrades.includes('nm'), trial: (day.trial ?? []).length > 0 });
+  // Штампы вырезаны из картинки стола по контуру: при наведении вырезка приподнимается.
+  const stampCuts = $derived(DECISIONS.map(d => {
+    const pts = L.stampCut[d];
+    const { r, clip } = cutBox(pts);
+    const base = clipIn(r, [...pts.slice(0, 2), ...pts.slice(-4)]); // только колодка — под ней тень
+    const bg = `background-image:url(${asset(L.bg)});background-position:-${r.x}cqw -${(r.y / 100) * L.ratio * 100}cqw`;
+    return { d, box: rectStyle(r), clip, base, bg };
+  }));
+  const canStamp = $derived(s.phase === 'shift' && !!cur && !busy && !ringing);
+  const callTip = $derived(ringing ? 'Снять трубку' : cur?.call ? (r.called ? 'Уже проверено' : `${cur.call.label} · 30 мин · C`) : 'Проверка по телефону не нужна');
   const phoneBg = $derived(`background-image:url(${asset(L.bg)});background-position:-${L.phone.x}cqw -${(L.phone.y / 100) * L.ratio * 100}cqw`);
   const spent = $derived(picks.reduce((a, id) => a + (C.world.upgrades.find(u => u.id === id)?.cost ?? 0), 0));
 
@@ -216,6 +226,7 @@
       <div class="m loy"><small>Лояльность</small><b>{s.loyalty}</b><i class="bar"><i style="width:{Math.max(0, Math.min(100, s.loyalty))}%;background:{s.loyalty > 60 ? 'var(--ok)' : s.loyalty > 30 ? 'var(--stamp-esc)' : 'var(--alarm)'}"></i></i></div>
     </div>
     <div class="ctl">
+      {#if lid !== 'port'}<button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍 Инспекция</button>{/if}
       <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶ Дальше' : '❚❚ Пауза'}</button>
       <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa {Math.round(zoom * 100)}%</button>
       <button type="button" aria-pressed={!sound} onclick={() => { sound = !sound; setSound(sound); }}>{sound ? '🔊' : '🔇'}</button>
@@ -250,12 +261,18 @@
     </div>
     {#if alert}<div class="redspill" style="--lx:{L.lamp.x + L.lamp.w / 2}%;--ly:{L.lamp.y + L.lamp.h / 2}%" aria-hidden="true"></div>{/if}
 
-    <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник · B</span></button>
+    <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник{findings.length ? ` · находок: ${findings.length}` : ''} · B</span></button>
     <button class="hot phone" class:ring={ringing} type="button" style={rectStyle(L.phone)} onclick={phone} aria-label="Телефон">
-      <span class="phonecut" style={phoneBg}></span><span class="tip">{ringing ? 'Снять трубку' : 'Проверить · C'}</span>
+      <span class="phonecut" style={phoneBg}></span><span class="tip">{callTip}</span>
     </button>
-    <div class="hot stamps" role="group" aria-label="Штампы" style={rectStyle(L.stamps)}>
-      {#each DECISIONS as d}<button type="button" aria-label={STAMP[d].label} onclick={() => stamp(d)}><span class="tip">{STAMP[d].label} · {STAMP[d].key}</span></button>{/each}
+    <div class="stamps" role="group" aria-label="Штампы">
+      {#each stampCuts as c (c.d)}
+        <div class="stampcut" class:off={!canStamp || (c.d === 'escalate' && s.esc <= 0)} style={c.box}>
+          <span class="shadow" style="clip-path:{c.base}"></span>
+          <button type="button" class="cut" style="clip-path:{c.clip};{c.bg}" aria-label={STAMP[c.d].label} onclick={() => stamp(c.d)}></button>
+          <span class="tip">{STAMP[c.d].label}{c.d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[c.d].key}</span>
+        </div>
+      {/each}
     </div>
 
     {#if cur && s.phase === 'shift'}
@@ -279,6 +296,7 @@
     {#if paused && s.phase === 'shift'}<button class="pausecover" type="button" onclick={() => (paused = false)}>Пауза · нажмите, чтобы продолжить</button>{/if}
   </div>
 
+  {#if lid === 'port'}
   <nav class="actions" aria-label="Действия">
     <div class="tools">
       <button class="tool" type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'}>🔍 Инспекция</button>
@@ -293,6 +311,7 @@
       {/each}
     </div>
   </nav>
+  {/if}
 
   <div class="slips" aria-live="polite">
     {#each slips as x (x.id)}<div class="slip {x.kind}"><b>{x.title}</b>{x.text}</div>{/each}
@@ -308,9 +327,9 @@
       <ol class="how">
         <li><b>Справочник</b> в папке на столе: регламенты, угрозы, сотрудники, контрагенты. Каждое утро бюллетень пополняется.</li>
         <li>Объект виден так, как его видит сотрудник. Кнопки <b>«Изучить»</b> раскрывают адрес, заголовки, журналы, песочницу и стоят минут смены. Верное решение без лишнего изучения даёт бонус.</li>
-        <li><b>Инспекция</b>: кликните по двум полям, которые противоречат друг другу, в документе или справочнике. Находка обосновывает решение.</li>
-        <li><b>Телефон</b>: проверка по второму каналу, 30 минут. Некоторые регламенты требуют её обязательно. Входящий звонок нужно снять.</li>
-        <li><b>Штампы</b>: пропустить, заблокировать или эскалировать на вторую линию. Эскалаций всего 4 за смену.</li>
+        <li><b>Инспекция</b> (кнопка 🔍 вверху или клавиша I): кликните по двум полям, которые противоречат друг другу, в документе или справочнике. Находка обосновывает решение.</li>
+        <li><b>Телефон</b> на столе: проверка по второму каналу, 30 минут. Некоторые регламенты требуют её обязательно. Входящий звонок нужно снять.</li>
+        <li><b>Штампы</b> в лотке на столе: пропустить, заблокировать или эскалировать на вторую линию. Эскалаций всего 4 за смену.</li>
         <li>Вечером — <b>бюджет отдела</b>: купленные инструменты меняют следующие смены.</li>
       </ol>
       <p class="keys">Клавиши: 1, 2, 3 — штампы · I — инспекция · B — справочник · C — телефон · P — пауза</p>
@@ -412,7 +431,7 @@
   .ctl button[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
 
   /* сцена вписывается в экран по высоте: шапка и панель действий всегда видны */
-  .scene{position:relative;width:100%;max-width:min(100%,calc((100dvh - 132px) * 1.5));margin:0 auto;container-type:inline-size;overflow:hidden;background:#0b0f18 center/cover no-repeat;user-select:none}
+  .scene{position:relative;width:100%;max-width:min(100%,calc((100dvh - 78px) * 1.5));margin:0 auto;container-type:inline-size;overflow:hidden;background:#0b0f18 center/cover no-repeat;user-select:none}
   .port .scene{max-width:min(100%,560px);margin:0 auto}
   .scene.shake{animation:shake .28s}
   @keyframes shake{20%{transform:translate(.25cqw,.15cqw)}40%{transform:translate(-.2cqw,-.1cqw)}60%{transform:translate(.12cqw,.08cqw)}80%{transform:translate(-.06cqw,0)}}
@@ -436,11 +455,17 @@
   .hot{position:absolute;background:transparent;border:0;padding:0;border-radius:.6cqw}
   .hot:hover,.hot:focus-visible{box-shadow:0 0 0 .18cqw rgba(224,160,70,.75),0 0 2cqw rgba(224,160,70,.35)}
   .tip{position:absolute;left:50%;top:-.4cqw;transform:translate(-50%,-100%);white-space:nowrap;font-family:var(--f-mono);font-size:.8cqw;background:rgba(10,14,24,.9);color:var(--lamp);padding:.2cqw .5cqw;opacity:0;transition:opacity .15s;pointer-events:none;z-index:3}
-  .hot:hover>.tip,.hot:focus-visible>.tip,.stamps button:hover .tip,.stamps button:focus-visible .tip{opacity:1}
-  .stamps{display:grid;grid-template-columns:repeat(3,1fr)}
-  .stamps button{background:transparent;border:0;border-radius:.4cqw;position:relative}
-  .stamps button:hover,.stamps button:focus-visible{background:rgba(224,160,70,.14)}
-  .stamps .tip{top:auto;bottom:-.4cqw;transform:translate(-50%,100%)}
+  .hot:hover>.tip,.hot:focus-visible>.tip{opacity:1}
+  .stampcut{position:absolute;pointer-events:none}
+  .stampcut .cut,.stampcut .shadow{position:absolute;inset:0;border:0;padding:0;transition:transform .22s cubic-bezier(.2,.7,.2,1),opacity .22s,filter .22s}
+  .stampcut .cut{pointer-events:auto;background-size:100cqw auto;background-repeat:no-repeat;cursor:pointer;opacity:0}
+  .stampcut .shadow{background:rgba(8,5,3,.8);filter:blur(.15cqw);opacity:0}
+  .stampcut:not(.off) .cut:hover,.stampcut:not(.off) .cut:focus-visible{opacity:1;transform:translateY(-.75cqw);filter:brightness(1.12)}
+  .stampcut:not(.off):has(.cut:hover) .shadow,.stampcut:not(.off):has(.cut:focus-visible) .shadow{opacity:1}
+  .stampcut .cut:focus-visible{outline:none}
+  .stampcut.off .cut{cursor:default}
+  .stampcut .tip{top:auto;bottom:-.6cqw;transform:translate(-50%,100%)}
+  .stampcut:has(.cut:hover) .tip,.stampcut:has(.cut:focus-visible) .tip{opacity:1}
   .phone{overflow:visible}
   .lamp{position:absolute;pointer-events:none;filter:drop-shadow(0 .5cqw .6cqw rgba(0,0,0,.6))}
   .lamp img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;max-width:100%}
