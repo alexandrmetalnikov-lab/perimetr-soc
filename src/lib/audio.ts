@@ -2,7 +2,9 @@
 // Пока файла нет, играет синтезированная заглушка или тишина: файлы можно добавлять по одному.
 let ctx: AudioContext | null = null;
 let enabled = true;
-let master: GainNode | null = null;
+let master: GainNode | null = null;   // шина игровых звуков
+let ambBus: GainNode | null = null;   // шина фона
+const vol = { amb: 0.7, sfx: 0.8 };   // ползунки громкости, 0…1
 
 export type Sfx =
   | 'sfx-stamp-1' | 'sfx-stamp-2' | 'sfx-stamp-3' | 'sfx-paper-in' | 'sfx-paper-out' | 'sfx-binder'
@@ -24,7 +26,8 @@ let wantAmb = false;
 function ac(): AudioContext | null {
   if (!ctx) {
     try { ctx = new AudioContext(); } catch { return null; }
-    master = ctx.createGain(); master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = vol.sfx; master.connect(ctx.destination);
+    ambBus = ctx.createGain(); ambBus.gain.value = vol.amb; ambBus.connect(ctx.destination);
     void fetch(base + 'index.json').then(r => (r.ok ? r.json() : [])).then((ids: string[]) => {
       for (const id of ALL) if (ids.includes(id)) void load(id);
     }).catch(() => { /* звуков ещё нет */ });
@@ -58,6 +61,12 @@ export function unlockAudio() { ac(); }
 
 export function setSound(on: boolean) { enabled = on; if (!on) { stopRing(); stopAmbient(); } }
 export const soundOn = () => enabled;
+/** Громкость фона или игровых звуков, 0…1. */
+export function setVolume(kind: 'amb' | 'sfx', v: number) {
+  vol[kind] = Math.max(0, Math.min(1, v));
+  const bus = kind === 'amb' ? ambBus : master;
+  if (bus && ctx) bus.gain.setTargetAtTime(vol[kind], ctx.currentTime, 0.05);
+}
 
 // ---------- события игры ----------
 export function stampThunk() {
@@ -93,7 +102,7 @@ export function stopRing() { ring?.stop(); ring = null; }
 // Фон смены: гул серверной и метель, по кругу. Плавно появляется и уходит.
 let amb: { src: AudioBufferSourceNode; g: GainNode } | null = null;
 function startAmbient() {
-  const a = ac(); if (!a || !master || !enabled || amb) return;
+  const a = ac(); if (!a || !ambBus || !enabled || amb) return;
   const b = bufs.get('amb-night');
   if (!b) return; // догрузится — load() запустит сам
   const src = a.createBufferSource(), g = a.createGain();
@@ -101,7 +110,7 @@ function startAmbient() {
   // MP3 добавляет по краям доли секунды тишины (задержка кодека) — петлю ставим по реальному звуку, без провала на стыке.
   const [from, to] = edges(b); src.loopStart = from; src.loopEnd = to;
   g.gain.linearRampToValueAtTime(VOL['amb-night'], a.currentTime + 2);
-  src.connect(g).connect(master); src.start();
+  src.connect(g).connect(ambBus); src.start();
   amb = { src, g };
 }
 /** Где в буфере начинается и кончается звук, в секундах (ищем только в первых и последних 0.2 с). */
