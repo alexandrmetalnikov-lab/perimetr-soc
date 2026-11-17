@@ -51,6 +51,7 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | obj-stamp-block | `art-src/obj/obj-stamp-block.png` | штамп «Блокировать», красный |
 | obj-stamp-escalate | `art-src/obj/obj-stamp-escalate.png` | штамп «Эскалировать», янтарный, фон и цвет доработаны |
 | obj-lamp-off, obj-lamp-on | `art-src/obj/obj-lamp-*.png` | красная лампа алерта, две версии из одной картинки |
+| bg-desk-evening-empty, bg-desk-evening-portrait-empty | `art-src/bg/` | ждут генерации: столы с пустым лотком |
 
 ## Какие предметы генерировать отдельно
 
@@ -62,6 +63,39 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 - `obj-phone` — уже есть, для интерфейса
 
 `obj-phone-handset`, `obj-binder`, `obj-mug` из первого списка больше не нужны.
+
+## Стол с пустым лотком
+
+Чтобы штампы приподнимались при наведении чисто, их нужно убрать с картинки стола и рисовать поверх
+отдельными спрайтами. Готовые `obj-stamp-*` для этого подходят, новые штампы генерировать не нужно.
+
+Как генерировать:
+
+1. Открыть в ChatGPT эталонный стол (`bg-desk-evening.png` или `bg-desk-evening-portrait.png`) и попросить
+   отредактировать его промптом ниже. Именно правка, а не новая картинка: композиция должна остаться прежней.
+2. Если ChatGPT сдвинул или перерисовал другие предметы, повторить: «Keep everything except the stamps pixel-identical
+   to the original». Если не выходит за 2–3 попытки — прислать мне, уберу штампы из картинки сам.
+3. Сохранить как `art-src/bg/bg-desk-evening-empty.png` и `art-src/bg/bg-desk-evening-portrait-empty.png`.
+
+### bg-desk-evening-empty (ПК, 3:2)
+
+```
+Edit the attached image. Remove only the three rubber stamps from the wooden tray, so the tray stands empty: show its clean wooden bottom and inner walls where the stamps were, with soft natural shading. Change nothing else: keep the exact same composition, camera angle, framing, objects, their positions and sizes, lighting and colors. Same size, landscape 3:2, 1536×1024.
+
+Style: cinematic digital painting with soft visible brushwork, painterly and slightly stylized, NOT photorealistic, not a photo, not a 3D render. Late-November office mood. Key light: warm amber desk lamp from the left. Fill light: cold teal monitor glow from the right. Deep navy shadows, never pure black. Subtle film grain, muted colors. Plain, slightly worn 2020s Russian corporate office.
+
+No text, no letters, no numbers, no logos, no brand names, no watermarks. All screens and papers are blank.
+```
+
+### bg-desk-evening-portrait-empty (телефон, 2:3)
+
+```
+Edit the attached image. Remove only the three rubber stamps from the wooden tray, so the tray stands empty: show its clean wooden bottom and inner walls where the stamps were, with soft natural shading. Change nothing else: keep the exact same composition, camera angle, framing, objects, their positions and sizes, lighting and colors. Same size, portrait 2:3, 1024×1536.
+
+Style: cinematic digital painting with soft visible brushwork, painterly and slightly stylized, NOT photorealistic, not a photo, not a 3D render. Late-November office mood. Key light: warm amber desk lamp from the left. Fill light: cold teal monitor glow from the right. Deep navy shadows, never pure black. Subtle film grain, muted colors. Plain, slightly worn 2020s Russian corporate office.
+
+No text, no letters, no numbers, no logos, no brand names, no watermarks. All screens and papers are blank.
+```
 
 ## Портреты: как не уйти в фотореализм
 
