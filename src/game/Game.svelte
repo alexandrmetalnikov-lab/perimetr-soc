@@ -48,6 +48,16 @@
   let mark = $state<Decision | null>(null);
   let drop = $state<Decision | null>(null);
   let docState = $state<'' | 'in' | 'out'>('');
+  // Телефон: документ — выдвижной лист. Свернул — виден стол со штампами, папкой и телефоном.
+  let sheet = $state(true);
+  // Сенсорный экран: первое касание штампа поднимает его и показывает подпись, второе — ставит.
+  let armed = $state<Decision | null>(null);
+  const touch = typeof matchMedia !== 'undefined' && matchMedia('(hover: none)').matches;
+  function tapStamp(d: Decision) {
+    if (!canStamp) return;
+    if (touch && armed !== d) { armed = d; uiClick(); return; }
+    armed = null; sheet = true; stamp(d);
+  }
   let shake = $state(false);
   let bubble = $state<{ title: string; text: string; portrait: string | null } | null>(null);
   let slips = $state<{ id: number; kind: E.GameEvent['kind']; title: string; text: string }[]>([]);
@@ -96,6 +106,7 @@
     uiClick();
     bubble = { title: call.label, text: call.text, portrait: portraitUrl(call.person ? P.get(call.person) : undefined, call.emotion) };
     setTimeout(() => (bubble = null), 6000);
+    sheet = true;
     checkTime();
   }
 
@@ -108,7 +119,7 @@
     setTimeout(() => {
       const res = E.decide(C, s, d);
       for (const ev of res?.events ?? []) slip(ev.kind, ev.title, ev.text);
-      mark = null; docState = 'in';
+      mark = null; docState = 'in'; sheet = true; armed = null;
       requestAnimationFrame(() => requestAnimationFrame(() => (docState = '')));
       busy = false;
       if (!E.current(C, s)) finish();
@@ -218,9 +229,10 @@
       <div class="m loy"><small>Лояльность</small><b>{s.loyalty}</b><i class="bar"><i style="width:{Math.max(0, Math.min(100, s.loyalty))}%;background:{s.loyalty > 60 ? 'var(--ok)' : s.loyalty > 30 ? 'var(--stamp-esc)' : 'var(--alarm)'}"></i></i></div>
     </div>
     <div class="ctl">
-      {#if lid !== 'port'}<button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍 Инспекция</button>{/if}
-      <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶ Дальше' : '❚❚ Пауза'}</button>
-      <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa {Math.round(zoom * 100)}%</button>
+      <button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍<span class="lbl"> Инспекция</span></button>
+      <button type="button" class="binbtn" aria-pressed={drawer} onclick={e => { e.stopPropagation(); uiClick(); drawer = !drawer; }} title="Справочник · B">📁{findings.length ? ` ${findings.length}` : ''}</button>
+      <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶' : '❚❚'}<span class="lbl">{paused ? ' Дальше' : ' Пауза'}</span></button>
+      <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa<span class="lbl"> {Math.round(zoom * 100)}%</span></button>
       <button type="button" aria-pressed={!sound} onclick={() => { sound = !sound; setSound(sound); }}>{sound ? '🔊' : '🔇'}</button>
       <button type="button" onclick={() => (forced = lid === 'port' ? 'land' : 'port')} title="Сменить раскладку">{lid === 'port' ? '🖥' : '📱'}</button>
     </div>
@@ -259,16 +271,22 @@
     </button>
     <div class="stamps" role="group" aria-label="Штампы">
       {#each DECISIONS as d (d)}
-        <div class="stamp" class:off={!canStamp || (d === 'escalate' && s.esc <= 0)} class:gone={drop === d || mark === d} style={rectStyle(L.stamps[d])}>
+        <div class="stamp" class:off={!canStamp || (d === 'escalate' && s.esc <= 0)} class:gone={drop === d || mark === d} class:armed={armed === d} style={rectStyle(L.stamps[d])}>
           <span class="shadow"></span>
-          <button type="button" aria-label={STAMP[d].label} onclick={() => stamp(d)}><img src={asset(STAMP[d].sprite)} alt="" draggable="false" /></button>
+          <button type="button" aria-label={STAMP[d].label} onclick={e => { e.stopPropagation(); tapStamp(d); }}><img src={asset(STAMP[d].sprite)} alt="" draggable="false" /></button>
           <span class="tip">{STAMP[d].label}{d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[d].key}</span>
         </div>
       {/each}
     </div>
 
     {#if cur && s.phase === 'shift'}
-      <article class="doc {docState}" style={rectStyle(L.doc)}>
+      {#if lid === 'port'}
+        <button class="sheettab" class:closed={!sheet} type="button" style="right:{100 - L.doc.x - L.doc.w}%;top:{L.doc.y}%;--dy:{L.doc.h * L.ratio - 13}cqw"
+          onclick={e => { e.stopPropagation(); uiClick(); sheet = !sheet; armed = null; }}>{sheet ? '▾ К столу' : '▴ Документ'}</button>
+      {/if}
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <article class="doc {docState}" class:closed={lid === 'port' && !sheet} style="{rectStyle(L.doc)};--dy:{L.doc.h * L.ratio - 13}cqw"
+        onclickcapture={e => { if (lid === 'port' && !sheet) { e.stopPropagation(); e.preventDefault(); sheet = true; } }}>
         <CaseDoc c={cur} {r} index={q.indexOf(cur) + 1} total={q.length} upgrades={s.upgrades} people={P}
           answered={answered.includes(cur.id)} {mark} canUse={t => E.hasTool(C, s, t)} onreveal={reveal} onanswer={answer} />
       </article>
@@ -288,22 +306,6 @@
     {#if paused && s.phase === 'shift'}<button class="pausecover" type="button" onclick={() => (paused = false)}>Пауза · нажмите, чтобы продолжить</button>{/if}
   </div>
 
-  {#if lid === 'port'}
-  <nav class="actions" aria-label="Действия">
-    <div class="tools">
-      <button class="tool" type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'}>🔍 Инспекция</button>
-      <button class="tool" type="button" aria-pressed={drawer} onclick={e => { e.stopPropagation(); drawer = !drawer; }}>📁 Справочник{findings.length ? ` · ${findings.length}` : ''}</button>
-      <button class="tool" type="button" onclick={phone} disabled={s.phase !== 'shift' || !cur || (!ringing && (!cur.call || r.called))}>
-        ☎ {ringing ? 'Снять трубку' : cur?.call ? (r.called ? 'Проверено' : `${cur.call.label} · 30 мин`) : 'Проверка недоступна'}</button>
-    </div>
-    <div class="stampsbar">
-      {#each DECISIONS as d}
-        <button class="sbtn s-{d}" type="button" onclick={() => stamp(d)} disabled={s.phase !== 'shift' || busy || ringing || (d === 'escalate' && s.esc <= 0)}>
-          {STAMP[d].label.toUpperCase()}{#if d === 'escalate'}<small>осталось {s.esc}</small>{/if}</button>
-      {/each}
-    </div>
-  </nav>
-  {/if}
 
   <div class="slips" aria-live="polite">
     {#each slips as x (x.id)}<div class="slip {x.kind}"><b>{x.title}</b>{x.text}</div>{/each}
@@ -321,7 +323,7 @@
         <li>Объект виден так, как его видит сотрудник. Кнопки <b>«Изучить»</b> раскрывают адрес, заголовки, журналы, песочницу и стоят минут смены. Верное решение без лишнего изучения даёт бонус.</li>
         <li><b>Инспекция</b> (кнопка 🔍 вверху или клавиша I): кликните по двум полям, которые противоречат друг другу, в документе или справочнике. Находка обосновывает решение.</li>
         <li><b>Телефон</b> на столе: проверка по второму каналу, 30 минут. Некоторые регламенты требуют её обязательно. Входящий звонок нужно снять.</li>
-        <li><b>Штампы</b> в лотке на столе: пропустить, заблокировать или эскалировать на вторую линию. Эскалаций всего 4 за смену.</li>
+        <li><b>Штампы</b> в лотке на столе (на телефоне: первое касание поднимает штамп, второе ставит; документ сворачивается кнопкой «К столу»): пропустить, заблокировать или эскалировать на вторую линию. Эскалаций всего 4 за смену.</li>
         <li>Вечером — <b>бюджет отдела</b>: купленные инструменты меняют следующие смены.</li>
       </ol>
       <p class="keys">Клавиши: 1, 2, 3 — штампы · I — инспекция · B — справочник · C — телефон · P — пауза</p>
@@ -421,10 +423,22 @@
   .ctl{display:flex;gap:6px}
   .ctl button{font-family:var(--f-mono);font-size:12px;background:transparent;border:1px solid var(--line);color:var(--ink);padding:5px 9px}
   .ctl button[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
+  .ctl button:disabled{opacity:.4}
+  .game:not(.port) .binbtn{display:none}
 
   /* сцена вписывается в экран по высоте: шапка и панель действий всегда видны */
   .scene{position:relative;width:100%;max-width:min(100%,calc((100dvh - 78px) * 1.5));margin:0 auto;container-type:inline-size;overflow:hidden;background:#0b0f18 center/cover no-repeat;user-select:none}
-  .port .scene{max-width:min(100%,560px);margin:0 auto}
+  .port .scene{max-width:min(100%,560px,calc((100dvh - 120px) / 1.5));margin:0 auto}
+  .port .hud{gap:6px 10px;position:relative}
+  .port .brand span{font-size:10px;flex-basis:100%}
+  .port .meters{gap:2px 12px;width:100%;justify-content:space-between}
+  .port .m small{font-size:8.5px}
+  .port .m b{font-size:13px}
+  .port .clock b{font-size:15px}
+  .port .bar{width:48px}
+  .port .ctl{position:absolute;top:8px;right:8px}
+  .port .ctl button{padding:4px 7px;font-size:11px}
+  .port .ctl .lbl{display:none}
   .scene.shake{animation:shake .28s}
   @keyframes shake{20%{transform:translate(.25cqw,.15cqw)}40%{transform:translate(-.2cqw,-.1cqw)}60%{transform:translate(.12cqw,.08cqw)}80%{transform:translate(-.06cqw,0)}}
   .spill{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;background:radial-gradient(38cqw 18cqw at 54% 40%,rgba(79,179,176,.18),transparent 70%),radial-gradient(60cqw 40cqw at 50% 50%,transparent 55%,rgba(5,8,16,.5) 100%)}
@@ -452,13 +466,13 @@
   .stamp button{position:absolute;inset:0;border:0;padding:0;background:transparent;pointer-events:auto;cursor:pointer;transition:transform .22s cubic-bezier(.2,.7,.2,1)}
   .stamp img{width:100%;height:100%;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 .25cqw .2cqw rgba(0,0,0,.55))}
   .stamp .shadow{position:absolute;left:12%;right:12%;bottom:-2%;height:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);opacity:0;transform:scale(.7);transition:opacity .22s,transform .22s}
-  .stamp:not(.off) button:hover,.stamp:not(.off) button:focus-visible{transform:translateY(-16%)}
-  .stamp:not(.off):has(button:hover) .shadow,.stamp:not(.off):has(button:focus-visible) .shadow{opacity:1;transform:none}
+  .stamp:not(.off) button:hover,.stamp:not(.off) button:focus-visible,.stamp.armed:not(.off) button{transform:translateY(-16%)}
+  .stamp:not(.off):has(button:hover) .shadow,.stamp:not(.off):has(button:focus-visible) .shadow,.stamp.armed:not(.off) .shadow{opacity:1;transform:none}
   .stamp button:focus-visible{outline:none}
   .stamp.off button{cursor:default}
   .stamp.gone{opacity:0}
   .stamp .tip{top:auto;bottom:-.6cqw;transform:translate(-50%,100%)}
-  .stamp:has(button:hover) .tip,.stamp:has(button:focus-visible) .tip{opacity:1}
+  .stamp:has(button:hover) .tip,.stamp:has(button:focus-visible) .tip,.stamp.armed .tip{opacity:1}
   .phone{overflow:visible}
   .lamp{position:absolute;pointer-events:none;filter:drop-shadow(0 .5cqw .6cqw rgba(0,0,0,.6))}
   .lamp img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;max-width:100%}
@@ -492,14 +506,6 @@
   .bava{width:4.5cqw;height:6cqw;flex:none;background:#16223a center/cover;border:1px solid var(--line)}
   .pausecover{position:absolute;inset:0;background:rgba(8,11,20,.55);color:var(--paper);border:0;font-family:var(--f-display);font-size:2cqw;z-index:6}
 
-  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
-  .tools,.stampsbar{display:flex;flex-wrap:wrap;gap:8px}
-  .tool{background:transparent;border:1px solid var(--line);color:var(--ink);padding:9px 12px;font-size:13px}
-  .tool[aria-pressed="true"]{background:var(--mark);color:#1d1d16;border-color:var(--mark)}
-  .tool:disabled{opacity:.4;cursor:not-allowed}
-  .sbtn{font-family:var(--f-display);font-size:13px;letter-spacing:.03em;padding:10px 14px;background:transparent;border:3px solid currentColor}
-  .sbtn small{display:block;font-family:var(--f-mono);font-size:10px}
-  .sbtn:disabled{opacity:.35;cursor:not-allowed}
   .s-allow{color:#86b46f}.s-block{color:#e0675b}.s-escalate{color:#e3a54a}
 
   .slips{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:20;display:grid;gap:8px;width:min(420px,calc(100vw - 32px));pointer-events:none}
@@ -564,6 +570,10 @@
   .port .doc{font-size:calc(max(11px,2.75cqw) * var(--zoom,1));padding:3.2cqw 3.6cqw;transform:none}
   .port .doc.out{transform:translateX(100cqw) rotate(8deg)}
   .port .doc.in{transform:translateY(-30cqw)}
+  .port .doc.closed{translate:0 var(--dy);overflow:hidden;cursor:pointer}
+  .sheettab{position:absolute;z-index:3;transform:translateY(-100%);font-family:var(--f-mono);font-size:max(11px,2.9cqw);background:var(--paper);color:var(--paper-ink);border:0;padding:1.4cqw 3cqw;border-radius:1.4cqw 1.4cqw 0 0;box-shadow:0 -.6cqw 1.6cqw rgba(0,0,0,.35);transition:translate .35s cubic-bezier(.2,.7,.2,1)}
+  .sheettab.closed{translate:0 var(--dy)}
+  .port .doc{transition:transform .45s cubic-bezier(.2,.7,.2,1),opacity .45s,translate .35s cubic-bezier(.2,.7,.2,1)}
   .port .stampspr{width:22cqw}
   .port .drawer{width:100%;bottom:auto;height:39%;border-right:0;border-bottom:1px solid var(--line);transform:translateY(-102%);font-size:calc(max(11px,2.8cqw) * var(--zoom,1))}
   .port .drawer.open{transform:none}
@@ -571,10 +581,6 @@
   .port .bava{width:12cqw;height:16cqw}
   .port .pausecover{font-size:5cqw}
   @media (max-width:560px){
-    .actions{position:sticky;bottom:0;background:var(--night);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));z-index:10}
-    .tools,.stampsbar{width:100%}
-    .tool{flex:1 1 auto;padding:8px 8px;font-size:12px}
-    .sbtn{flex:1 1 0;padding:12px 4px;font-size:11px}
     .meters{gap:4px 12px}
     .bar{width:56px}
   }
