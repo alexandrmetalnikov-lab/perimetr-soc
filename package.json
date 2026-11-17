@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "assets": "node scripts/optimize-assets.mjs",
+    "assets": "node scripts/optimize-assets.mjs && node scripts/optimize-audio.mjs",
     "content:check": "node scripts/check-content.mjs",
     "test": "vitest run"
   },
