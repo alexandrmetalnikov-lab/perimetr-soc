@@ -6,8 +6,8 @@
   import CaseDoc from './CaseDoc.svelte';
   import Binder from './Binder.svelte';
   import Rich from './Rich.svelte';
-  import { LAYOUTS, pickLayout, rectStyle, type LayoutId } from '../scene/layouts';
-  import { stampThunk, uiClick, startRing, stopRing, setSound, alarm, paperIn, paperOut, binder, keys, pickup, dial, warn, sign, sting, ambient as roomTone, unlockAudio } from '../lib/audio';
+  import { LAYOUTS, pickLayout, rectStyle, cutBox, type LayoutId } from '../scene/layouts';
+  import { stampThunk, uiClick, startRing, stopRing, setSound, setVolume, alarm, paperIn, paperOut, binder, keys, pickup, dial, warn, sign, sting, ambient as roomTone, unlockAudio } from '../lib/audio';
   import { startSnow } from '../lib/snow';
   import { AMBIENT, DECISIONS, STAMP, asset, people, portraitUrl, type Inspect, type Tab } from './ui';
 
@@ -35,6 +35,14 @@
   let paused = $state(false);
   let busy = $state(false);
   let sound = $state(true);
+  // Громкость: фон и игровые звуки отдельно, запоминается в браузере.
+  let mixer = $state(false);
+  let volAmb = $state(70), volSfx = $state(80);
+  const AUDIO_KEY = 'perimetr-soc.audio';
+  function saveAudio() {
+    setSound(sound); setVolume('amb', volAmb / 100); setVolume('sfx', volSfx / 100);
+    try { localStorage.setItem(AUDIO_KEY, JSON.stringify({ on: sound, amb: volAmb, sfx: volSfx })); } catch { /* недоступно */ }
+  }
   // Размер текста документа и справочника: 1 → 1.15 → 1.3, запоминается в браузере.
   const ZOOMS = [1, 1.15, 1.3];
   let zoom = $state(1);
@@ -73,6 +81,11 @@
   const day = $derived(C.world.days.find(d => d.n === s.day)!);
   const findings = $derived(r.findings);
   const tools = $derived({ sandbox: E.hasTool(C, s, 'sandbox'), ti: E.hasTool(C, s, 'ti'), nm: s.upgrades.includes('nm'), trial: (day.trial ?? []).length > 0 });
+  // Передняя стенка лотка из той же картинки стола — поверх штампов, чтобы они стояли внутри лотка.
+  const tray = $derived.by(() => {
+    const { r, clip } = cutBox(L.trayFront);
+    return { box: rectStyle(r), clip, bg: `background-image:url(${asset(L.bg)});background-position:-${r.x}cqw -${(r.y / 100) * L.ratio * 100}cqw` };
+  });
   const canStamp = $derived(s.phase === 'shift' && !!cur && !busy && !ringing);
   const callTip = $derived(ringing ? 'Снять трубку' : cur?.call ? (r.called ? 'Уже проверено' : `${cur.call.label} · 30 мин · C`) : 'Проверка по телефону не нужна');
   const phoneBg = $derived(`background-image:url(${asset(L.bg)});background-position:-${L.phone.x}cqw -${(L.phone.y / 100) * L.ratio * 100}cqw`);
@@ -194,6 +207,11 @@
   // ---------- часы, клавиатура, раскладка ----------
   onMount(() => {
     addEventListener('pointerdown', unlockAudio, { once: true });
+    try {
+      const a = JSON.parse(localStorage.getItem(AUDIO_KEY) ?? 'null');
+      if (a) { sound = a.on !== false; volAmb = Number(a.amb ?? 70); volSfx = Number(a.sfx ?? 80); }
+    } catch { /* недоступно */ }
+    setSound(sound); setVolume('amb', volAmb / 100); setVolume('sfx', volSfx / 100);
     try { const z = Number(localStorage.getItem('perimetr-soc.zoom')); if (ZOOMS.includes(z)) zoom = z; } catch { /* недоступно */ }
     try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const v = JSON.parse(raw); if (v?.v === 1 && v.day > 1) save = v; } } catch { /* недоступно */ }
     const onResize = () => (auto = pickLayout());
@@ -213,7 +231,7 @@
       else if (e.key === 'b' || e.key === 'и') { if (!drawer) binder(); drawer = !drawer; }
       else if (e.key === 'c' || e.key === 'с') phone();
       else if (e.key === 'p' || e.key === 'з') paused = !paused;
-      else if (e.key === 'Escape') { if (ins.on) ins.on = false; else drawer = false; }
+      else if (e.key === 'Escape') { if (mixer) mixer = false; else if (ins.on) ins.on = false; else drawer = false; }
     };
     addEventListener('keydown', onKey);
     const stopSnow = startSnow(canvas);
@@ -241,11 +259,20 @@
       <div class="m loy"><small>Лояльность</small><b>{s.loyalty}</b><i class="bar"><i style="width:{Math.max(0, Math.min(100, s.loyalty))}%;background:{s.loyalty > 60 ? 'var(--ok)' : s.loyalty > 30 ? 'var(--stamp-esc)' : 'var(--alarm)'}"></i></i></div>
     </div>
     <div class="ctl">
-      <button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍<span class="lbl"> Инспекция</span></button>
+      <button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍<span class="lbl">Инспекция</span></button>
       <button type="button" class="binbtn" aria-pressed={drawer} onclick={e => { e.stopPropagation(); if (!drawer) binder(); else uiClick(); drawer = !drawer; }} title="Справочник · B">📁{findings.length ? ` ${findings.length}` : ''}</button>
-      <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶' : '❚❚'}<span class="lbl">{paused ? ' Дальше' : ' Пауза'}</span></button>
-      <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa<span class="lbl"> {Math.round(zoom * 100)}%</span></button>
-      <button type="button" aria-pressed={!sound} onclick={() => { sound = !sound; setSound(sound); }}>{sound ? '🔊' : '🔇'}</button>
+      <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶' : '❚❚'}<span class="lbl">{paused ? 'Дальше' : 'Пауза'}</span></button>
+      <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa<span class="lbl">{Math.round(zoom * 100)}%</span></button>
+      <div class="mixwrap">
+        <button type="button" aria-expanded={mixer} onclick={e => { e.stopPropagation(); mixer = !mixer; }} title="Звук">{sound ? '🔊' : '🔇'}</button>
+        {#if mixer}
+          <div class="mixer" role="dialog" aria-label="Звук">
+            <label class="row"><input type="checkbox" bind:checked={sound} onchange={saveAudio} /> Звук включён</label>
+            <label><span class="lab">Фон смены <b>{volAmb}%</b></span><input type="range" min="0" max="100" step="5" bind:value={volAmb} oninput={saveAudio} disabled={!sound} /></label>
+            <label><span class="lab">Игровые звуки <b>{volSfx}%</b></span><input type="range" min="0" max="100" step="5" bind:value={volSfx} oninput={saveAudio} onchange={() => stampThunk()} disabled={!sound} /></label>
+          </div>
+        {/if}
+      </div>
       <button type="button" onclick={() => (forced = lid === 'port' ? 'land' : 'port')} title="Сменить раскладку">{lid === 'port' ? '🖥' : '📱'}</button>
     </div>
   </header>
@@ -289,6 +316,7 @@
           <span class="tip">{STAMP[d].label}{d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[d].key}</span>
         </div>
       {/each}
+      <span class="trayfront" style="{tray.box};clip-path:{tray.clip};{tray.bg}"></span>
     </div>
 
     {#if cur && s.phase === 'shift'}
@@ -433,6 +461,14 @@
   .bar{display:block;width:80px;height:5px;background:var(--night-2);border:1px solid var(--line);margin-top:3px}
   .bar i{display:block;height:100%;transition:width .4s}
   .ctl{display:flex;gap:6px}
+  .mixwrap{position:relative}
+  .mixer{position:absolute;right:0;top:calc(100% + 6px);z-index:30;width:220px;background:var(--panel,#121a2c);border:1px solid var(--line);padding:10px 12px;display:grid;gap:10px;font-family:var(--f-mono);font-size:12px;color:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  .mixer label{display:grid;gap:4px}
+  .mixer .lab{display:flex;justify-content:space-between}
+  .mixer label b{font-weight:400;color:var(--lamp)}
+  .ctl .lbl{margin-left:.4em}
+  .mixer .row{display:flex;gap:8px;align-items:center}
+  .mixer input[type=range]{width:100%;accent-color:var(--lamp)}
   .ctl button{font-family:var(--f-mono);font-size:12px;background:transparent;border:1px solid var(--line);color:var(--ink);padding:5px 9px}
   .ctl button[aria-pressed="true"]{border-color:var(--lamp);color:var(--lamp)}
   .ctl button:disabled{opacity:.4}
@@ -476,7 +512,9 @@
   .hot:hover>.tip,.hot:focus-visible>.tip{opacity:1}
   .stamp{position:absolute;pointer-events:none;transition:opacity .2s}
   .stamp button{position:absolute;inset:0;border:0;padding:0;background:transparent;pointer-events:auto;cursor:pointer;transition:transform .22s cubic-bezier(.2,.7,.2,1)}
-  .stamp img{width:100%;height:100%;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 .25cqw .2cqw rgba(0,0,0,.55))}
+  .stamp img{width:100%;height:100%;object-fit:contain;object-position:bottom;display:block;filter:brightness(.78) saturate(.85) sepia(.12) drop-shadow(-.2cqw .15cqw .25cqw rgba(0,0,0,.6))}
+  .trayfront{position:absolute;pointer-events:none;background-size:100cqw auto;background-repeat:no-repeat}
+  .stamps .tip{z-index:2}
   .stamp .shadow{position:absolute;left:12%;right:12%;bottom:-2%;height:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);opacity:0;transform:scale(.7);transition:opacity .22s,transform .22s}
   .stamp:not(.off) button:hover,.stamp:not(.off) button:focus-visible,.stamp.armed:not(.off) button{transform:translateY(-16%)}
   .stamp:not(.off):has(button:hover) .shadow,.stamp:not(.off):has(button:focus-visible) .shadow,.stamp.armed:not(.off) .shadow{opacity:1;transform:none}
