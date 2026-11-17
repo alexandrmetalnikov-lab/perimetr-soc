@@ -33,8 +33,8 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 
 | id | Файл | Статус |
 |---|---|---|
-| bg-desk-evening | `art-src/bg/bg-desk-evening.png` | эталон |
-| bg-desk-evening-portrait | `art-src/bg/bg-desk-evening-portrait.png` | эталон для телефона |
+| bg-desk-evening | `art-src/bg/bg-desk-evening.png` | эталон стиля; в игре заменён версией с пустым лотком |
+| bg-desk-evening-portrait | `art-src/bg/bg-desk-evening-portrait.png` | эталон для телефона; в игре заменён версией с пустым лотком |
 | obj-phone | `art-src/obj/obj-phone.png` | для интерфейса и окна звонка |
 | p-kuznetsova | `art-src/portraits/p-kuznetsova.png` | базовый портрет |
 | p-zaytseva | `art-src/portraits/p-zaytseva.png` | базовый портрет |
@@ -51,11 +51,11 @@ No text, no letters, no numbers, no logos, no brand names, no watermarks. All sc
 | obj-stamp-block | `art-src/obj/obj-stamp-block.png` | штамп «Блокировать», красный |
 | obj-stamp-escalate | `art-src/obj/obj-stamp-escalate.png` | штамп «Эскалировать», янтарный, фон и цвет доработаны |
 | obj-lamp-off, obj-lamp-on | `art-src/obj/obj-lamp-*.png` | красная лампа алерта, две версии из одной картинки |
-| bg-desk-evening-empty, bg-desk-evening-portrait-empty | `art-src/bg/` | ждут генерации: столы с пустым лотком |
+| bg-desk-evening-empty, bg-desk-evening-portrait-empty | `art-src/bg/` | **текущие столы** (ПК и телефон): пустой лоток, штампы — спрайты `obj-stamp-*` |
 
 ## Какие предметы генерировать отдельно
 
-Телефон, папка, кружка и лоток со штампами уже нарисованы в самом столе. Отдельный спрайт нужен
+Телефон, папка, кружка и пустой лоток нарисованы в самом столе, штампы стоят в лотке спрайтами. Отдельный спрайт нужен
 только тому, что двигается само по себе или появляется поверх сцены:
 
 - `obj-stamp-allow`, `obj-stamp-block`, `obj-stamp-escalate` — по одному штампу: для анимации «штамп опускается на документ»

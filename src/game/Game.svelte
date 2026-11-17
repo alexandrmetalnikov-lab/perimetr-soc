@@ -6,7 +6,7 @@
   import CaseDoc from './CaseDoc.svelte';
   import Binder from './Binder.svelte';
   import Rich from './Rich.svelte';
-  import { LAYOUTS, pickLayout, rectStyle, cutBox, clipIn, type LayoutId } from '../scene/layouts';
+  import { LAYOUTS, pickLayout, rectStyle, type LayoutId } from '../scene/layouts';
   import { stampThunk, uiClick, startRing, stopRing, setSound, alarm } from '../lib/audio';
   import { startSnow } from '../lib/snow';
   import { AMBIENT, DECISIONS, STAMP, asset, people, portraitUrl, type Inspect, type Tab } from './ui';
@@ -63,14 +63,6 @@
   const day = $derived(C.world.days.find(d => d.n === s.day)!);
   const findings = $derived(r.findings);
   const tools = $derived({ sandbox: E.hasTool(C, s, 'sandbox'), ti: E.hasTool(C, s, 'ti'), nm: s.upgrades.includes('nm'), trial: (day.trial ?? []).length > 0 });
-  // Штампы вырезаны из картинки стола по контуру: при наведении вырезка приподнимается.
-  const stampCuts = $derived(DECISIONS.map(d => {
-    const pts = L.stampCut[d];
-    const { r, clip } = cutBox(pts);
-    const base = clipIn(r, [...pts.slice(0, 2), ...pts.slice(-4)]); // только колодка — под ней тень
-    const bg = `background-image:url(${asset(L.bg)});background-position:-${r.x}cqw -${(r.y / 100) * L.ratio * 100}cqw`;
-    return { d, box: rectStyle(r), clip, base, bg };
-  }));
   const canStamp = $derived(s.phase === 'shift' && !!cur && !busy && !ringing);
   const callTip = $derived(ringing ? 'Снять трубку' : cur?.call ? (r.called ? 'Уже проверено' : `${cur.call.label} · 30 мин · C`) : 'Проверка по телефону не нужна');
   const phoneBg = $derived(`background-image:url(${asset(L.bg)});background-position:-${L.phone.x}cqw -${(L.phone.y / 100) * L.ratio * 100}cqw`);
@@ -266,11 +258,11 @@
       <span class="phonecut" style={phoneBg}></span><span class="tip">{callTip}</span>
     </button>
     <div class="stamps" role="group" aria-label="Штампы">
-      {#each stampCuts as c (c.d)}
-        <div class="stampcut" class:off={!canStamp || (c.d === 'escalate' && s.esc <= 0)} style={c.box}>
-          <span class="shadow" style="clip-path:{c.base}"></span>
-          <button type="button" class="cut" style="clip-path:{c.clip};{c.bg}" aria-label={STAMP[c.d].label} onclick={() => stamp(c.d)}></button>
-          <span class="tip">{STAMP[c.d].label}{c.d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[c.d].key}</span>
+      {#each DECISIONS as d (d)}
+        <div class="stamp" class:off={!canStamp || (d === 'escalate' && s.esc <= 0)} class:gone={drop === d || mark === d} style={rectStyle(L.stamps[d])}>
+          <span class="shadow"></span>
+          <button type="button" aria-label={STAMP[d].label} onclick={() => stamp(d)}><img src={asset(STAMP[d].sprite)} alt="" draggable="false" /></button>
+          <span class="tip">{STAMP[d].label}{d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[d].key}</span>
         </div>
       {/each}
     </div>
@@ -456,16 +448,17 @@
   .hot:hover,.hot:focus-visible{box-shadow:0 0 0 .18cqw rgba(224,160,70,.75),0 0 2cqw rgba(224,160,70,.35)}
   .tip{position:absolute;left:50%;top:-.4cqw;transform:translate(-50%,-100%);white-space:nowrap;font-family:var(--f-mono);font-size:.8cqw;background:rgba(10,14,24,.9);color:var(--lamp);padding:.2cqw .5cqw;opacity:0;transition:opacity .15s;pointer-events:none;z-index:3}
   .hot:hover>.tip,.hot:focus-visible>.tip{opacity:1}
-  .stampcut{position:absolute;pointer-events:none}
-  .stampcut .cut,.stampcut .shadow{position:absolute;inset:0;border:0;padding:0;transition:transform .22s cubic-bezier(.2,.7,.2,1),opacity .22s,filter .22s}
-  .stampcut .cut{pointer-events:auto;background-size:100cqw auto;background-repeat:no-repeat;cursor:pointer;opacity:0}
-  .stampcut .shadow{background:rgba(8,5,3,.8);filter:blur(.15cqw);opacity:0}
-  .stampcut:not(.off) .cut:hover,.stampcut:not(.off) .cut:focus-visible{opacity:1;transform:translateY(-.75cqw);filter:brightness(1.12)}
-  .stampcut:not(.off):has(.cut:hover) .shadow,.stampcut:not(.off):has(.cut:focus-visible) .shadow{opacity:1}
-  .stampcut .cut:focus-visible{outline:none}
-  .stampcut.off .cut{cursor:default}
-  .stampcut .tip{top:auto;bottom:-.6cqw;transform:translate(-50%,100%)}
-  .stampcut:has(.cut:hover) .tip,.stampcut:has(.cut:focus-visible) .tip{opacity:1}
+  .stamp{position:absolute;pointer-events:none;transition:opacity .2s}
+  .stamp button{position:absolute;inset:0;border:0;padding:0;background:transparent;pointer-events:auto;cursor:pointer;transition:transform .22s cubic-bezier(.2,.7,.2,1)}
+  .stamp img{width:100%;height:100%;object-fit:contain;object-position:bottom;display:block;filter:drop-shadow(0 .25cqw .2cqw rgba(0,0,0,.55))}
+  .stamp .shadow{position:absolute;left:12%;right:12%;bottom:-2%;height:14%;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);opacity:0;transform:scale(.7);transition:opacity .22s,transform .22s}
+  .stamp:not(.off) button:hover,.stamp:not(.off) button:focus-visible{transform:translateY(-16%)}
+  .stamp:not(.off):has(button:hover) .shadow,.stamp:not(.off):has(button:focus-visible) .shadow{opacity:1;transform:none}
+  .stamp button:focus-visible{outline:none}
+  .stamp.off button{cursor:default}
+  .stamp.gone{opacity:0}
+  .stamp .tip{top:auto;bottom:-.6cqw;transform:translate(-50%,100%)}
+  .stamp:has(button:hover) .tip,.stamp:has(button:focus-visible) .tip{opacity:1}
   .phone{overflow:visible}
   .lamp{position:absolute;pointer-events:none;filter:drop-shadow(0 .5cqw .6cqw rgba(0,0,0,.6))}
   .lamp img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;max-width:100%}
