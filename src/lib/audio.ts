@@ -98,9 +98,18 @@ function startAmbient() {
   if (!b) return; // догрузится — load() запустит сам
   const src = a.createBufferSource(), g = a.createGain();
   src.buffer = b; src.loop = true; g.gain.value = 0;
+  // MP3 добавляет по краям доли секунды тишины (задержка кодека) — петлю ставим по реальному звуку, без провала на стыке.
+  const [from, to] = edges(b); src.loopStart = from; src.loopEnd = to;
   g.gain.linearRampToValueAtTime(VOL['amb-night'], a.currentTime + 2);
   src.connect(g).connect(master); src.start();
   amb = { src, g };
+}
+/** Где в буфере начинается и кончается звук, в секундах (ищем только в первых и последних 0.2 с). */
+function edges(b: AudioBuffer): [number, number] {
+  const ch = b.getChannelData(0), lim = Math.min(ch.length, Math.floor(b.sampleRate * 0.2)), eps = 1e-4;
+  let i = 0; while (i < lim && Math.abs(ch[i]) < eps) i++;
+  let j = ch.length - 1; while (j > ch.length - lim && Math.abs(ch[j]) < eps) j--;
+  return [i / b.sampleRate, (j + 1) / b.sampleRate];
 }
 export function ambient(on: boolean) { wantAmb = on; if (on) startAmbient(); else stopAmbient(); }
 function stopAmbient() {
