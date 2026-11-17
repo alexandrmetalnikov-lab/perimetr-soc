@@ -7,7 +7,7 @@
   import Binder from './Binder.svelte';
   import Rich from './Rich.svelte';
   import { LAYOUTS, pickLayout, rectStyle, type LayoutId } from '../scene/layouts';
-  import { stampThunk, uiClick, startRing, stopRing, setSound, alarm } from '../lib/audio';
+  import { stampThunk, uiClick, startRing, stopRing, setSound, alarm, paperIn, paperOut, binder, keys, pickup, dial, warn, sign, sting, ambient as roomTone, unlockAudio } from '../lib/audio';
   import { startSnow } from '../lib/snow';
   import { AMBIENT, DECISIONS, STAMP, asset, people, portraitUrl, type Inspect, type Tab } from './ui';
 
@@ -79,6 +79,14 @@
   const spent = $derived(picks.reduce((a, id) => a + (C.world.upgrades.find(u => u.id === id)?.cost ?? 0), 0));
 
   $effect(() => { if (ringing) startRing(); else stopRing(); });
+  // Фон смены звучит, пока идёт смена и не нажата пауза; утро, отчёт и финал — короткие заставки.
+  $effect(() => { roomTone(s.phase === 'shift' && !paused); });
+  $effect(() => {
+    const ph = s.phase;
+    if (ph === 'morning') sting('sting-morning');
+    else if (ph === 'report') sting('sting-evening');
+    else if (ph === 'final') sting('sting-final');
+  });
 
   // Красная лампа: объект с высокой важностью на столе. Зависит только от важности, а не от того, атака это или нет.
   const alert = $derived(s.phase === 'shift' && !busy && cur?.alert?.severity === 'Высокий');
@@ -94,16 +102,16 @@
   }
 
   // ---------- действия ----------
-  function reveal(id: string) { if (!busy && E.reveal(C, s, id)) { uiClick(); checkTime(); } }
+  function reveal(id: string) { if (!busy && E.reveal(C, s, id)) { keys(); checkTime(); } }
 
-  function answer() { if (cur && !answered.includes(cur.id)) { answered = [...answered, cur.id]; uiClick(); } }
+  function answer() { if (cur && !answered.includes(cur.id)) { answered = [...answered, cur.id]; pickup(); } }
 
   function phone() {
     if (busy || s.phase !== 'shift' || !cur) return;
     if (ringing) return answer();
     const call = E.secondChannel(C, s);
     if (!call) return;
-    uiClick();
+    dial();
     bubble = { title: call.label, text: call.text, portrait: portraitUrl(call.person ? P.get(call.person) : undefined, call.emotion) };
     setTimeout(() => (bubble = null), 6000);
     sheet = true;
@@ -115,11 +123,13 @@
     if (d === 'escalate' && s.esc <= 0) { slip('info', 'Эскалаций не осталось', 'Вторая линия больше не принимает эскалации в эту смену.'); return; }
     busy = true; ins.on = false; ins.sel = null; drop = d;
     setTimeout(() => { mark = d; stampThunk(); shake = false; requestAnimationFrame(() => (shake = true)); }, 330);
-    setTimeout(() => { drop = null; docState = 'out'; }, 950);
+    setTimeout(() => { drop = null; docState = 'out'; paperOut(); }, 950);
     setTimeout(() => {
       const res = E.decide(C, s, d);
       for (const ev of res?.events ?? []) slip(ev.kind, ev.title, ev.text);
+      if (res?.events.some(ev => ev.kind === 'warn')) warn();
       mark = null; docState = 'in'; sheet = true; armed = null;
+      if (E.current(C, s)) paperIn();
       requestAnimationFrame(() => requestAnimationFrame(() => (docState = '')));
       busy = false;
       if (!E.current(C, s)) finish();
@@ -160,6 +170,7 @@
   }
 
   function nextDay() {
+    if (picks.length) sign();
     E.buy(C, s, picks);
     const next = s.day + 1;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(E.toSave(s, next))); } catch { /* недоступно */ }
@@ -167,7 +178,7 @@
     E.startDay(C, s, next);
   }
 
-  function begin() { E.beginShift(s); docState = 'in'; requestAnimationFrame(() => requestAnimationFrame(() => (docState = ''))); }
+  function begin() { unlockAudio(); E.beginShift(s); docState = 'in'; paperIn(); requestAnimationFrame(() => requestAnimationFrame(() => (docState = ''))); }
 
   function restart() {
     try { localStorage.removeItem(SAVE_KEY); } catch { /* недоступно */ }
@@ -182,6 +193,7 @@
 
   // ---------- часы, клавиатура, раскладка ----------
   onMount(() => {
+    addEventListener('pointerdown', unlockAudio, { once: true });
     try { const z = Number(localStorage.getItem('perimetr-soc.zoom')); if (ZOOMS.includes(z)) zoom = z; } catch { /* недоступно */ }
     try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const v = JSON.parse(raw); if (v?.v === 1 && v.day > 1) save = v; } } catch { /* недоступно */ }
     const onResize = () => (auto = pickLayout());
@@ -198,7 +210,7 @@
       const d = DECISIONS.find(x => STAMP[x].key === e.key);
       if (d) stamp(d);
       else if (e.key === 'i' || e.key === 'ш') toggleInspect();
-      else if (e.key === 'b' || e.key === 'и') drawer = !drawer;
+      else if (e.key === 'b' || e.key === 'и') { if (!drawer) binder(); drawer = !drawer; }
       else if (e.key === 'c' || e.key === 'с') phone();
       else if (e.key === 'p' || e.key === 'з') paused = !paused;
       else if (e.key === 'Escape') { if (ins.on) ins.on = false; else drawer = false; }
@@ -230,7 +242,7 @@
     </div>
     <div class="ctl">
       <button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍<span class="lbl"> Инспекция</span></button>
-      <button type="button" class="binbtn" aria-pressed={drawer} onclick={e => { e.stopPropagation(); uiClick(); drawer = !drawer; }} title="Справочник · B">📁{findings.length ? ` ${findings.length}` : ''}</button>
+      <button type="button" class="binbtn" aria-pressed={drawer} onclick={e => { e.stopPropagation(); if (!drawer) binder(); else uiClick(); drawer = !drawer; }} title="Справочник · B">📁{findings.length ? ` ${findings.length}` : ''}</button>
       <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶' : '❚❚'}<span class="lbl">{paused ? ' Дальше' : ' Пауза'}</span></button>
       <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa<span class="lbl"> {Math.round(zoom * 100)}%</span></button>
       <button type="button" aria-pressed={!sound} onclick={() => { sound = !sound; setSound(sound); }}>{sound ? '🔊' : '🔇'}</button>
@@ -265,7 +277,7 @@
     </div>
     {#if alert}<div class="redspill" style="--lx:{L.lamp.x + L.lamp.w / 2}%;--ly:{L.lamp.y + L.lamp.h / 2}%" aria-hidden="true"></div>{/if}
 
-    <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник{findings.length ? ` · находок: ${findings.length}` : ''} · B</span></button>
+    <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { if (!drawer) binder(); else uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник{findings.length ? ` · находок: ${findings.length}` : ''} · B</span></button>
     <button class="hot phone" class:ring={ringing} type="button" style={rectStyle(L.phone)} onclick={phone} aria-label="Телефон">
       <span class="phonecut" style={phoneBg}></span><span class="tip">{callTip}</span>
     </button>

@@ -5,7 +5,7 @@
 
 ## Стек
 
-Vite + Svelte 5 (руны) + TypeScript. Звук — пока синтез в `src/lib/audio.ts`, дальше файлы. Сборка с `base: './'`,
+Vite + Svelte 5 (руны) + TypeScript. Звук — `src/lib/audio.ts`: файлы из `art-src/audio` (список и промпты — `docs/audio.md`), пока файла нет — синтез-заглушка. Сборка с `base: './'`,
 одна и та же `dist/` идёт на GitHub Pages и в архив для itch.io.
 
 ## Устройство
