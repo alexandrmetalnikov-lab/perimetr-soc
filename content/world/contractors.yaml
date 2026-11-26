@@ -49,6 +49,14 @@ software:
       - "IP: [[ref.scan.ip|10.0.5.20]]"
       - "Окна сканирования: [[ref.scan.win|вт и чт 10:00–13:00]]"
 
+  - id: backupfleet
+    day: 3
+    name: BackupFleet · агент резервного копирования
+    lines:
+      - "Разрешённый домен проверки состояния: [[ref.bkp.domain|status.backupfleet.example]]"
+      - "Согласованное обновление: [[ref.bkp.change|CHG-2251 · 05.11 10:00 · только BKP-01]]"
+      - "Эталон SHA-256 пакета: [[ref.bkp.hash|81b4e6c2…19ad]]"
+
 # Матрица доступа: вкладка «Доступ» появляется со смены day.
 access_matrix:
   day: 2

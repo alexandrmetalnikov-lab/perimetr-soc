@@ -165,3 +165,29 @@ describe('конец смены и кампания', () => {
     expect(t.pts).toBe(s.pts);
   });
 });
+
+describe('DNS-кейсы третьей смены', () => {
+  it.each([false, true])('оба кейса решаются по журналам и справочнику (песочница %s)', sandbox => {
+    const s = game(3, { flags: { chain: 'contained' }, upgrades: sandbox ? ['sandbox'] : [] });
+    for (const decision of ['block', 'allow', 'block', 'escalate'] as const) E.decide(C, s, decision);
+
+    expect(E.current(C, s)?.id).toBe('dns-legit');
+    expect(E.reveal(C, s, 'dns')).toBe(true);
+    expect(E.reveal(C, s, 'update')).toBe(true);
+    expect(E.inspect(C, s, 'dns.legit.domain', 'ref.bkp.domain')?.fresh).toBe(true);
+    expect(E.inspect(C, s, 'dns.legit.hash', 'ref.bkp.hash')?.fresh).toBe(true);
+    expect(E.reveal(C, s, 'sandbox')).toBe(sandbox);
+    if (sandbox) expect(E.inspect(C, s, 'dns.legit.sandbox', 'dns.legit.domain')?.fresh).toBe(true);
+    expect(E.decide(C, s, 'allow')?.result.verdict).toBe('ok');
+
+    expect(E.current(C, s)?.id).toBe('dns-attack');
+    expect(E.reveal(C, s, 'dns')).toBe(true);
+    expect(E.reveal(C, s, 'update')).toBe(true);
+    expect(E.inspect(C, s, 'dns.attack.domain', 'ref.bkp.domain')?.fresh).toBe(true);
+    expect(E.inspect(C, s, 'dns.attack.hash', 'ref.bkp.hash')?.fresh).toBe(true);
+    expect(E.reveal(C, s, 'sandbox')).toBe(sandbox);
+    if (sandbox) expect(E.inspect(C, s, 'dns.attack.sandbox', 'dns.attack.domain')?.fresh).toBe(true);
+    expect(E.decide(C, s, 'escalate')?.result.verdict).toBe('best');
+    expect(E.endShift(C, s).missed).toBe(0);
+  });
+});
