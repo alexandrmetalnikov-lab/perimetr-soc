@@ -466,7 +466,7 @@
           {#if ch}
             <div class="chainbox {ch.tone}"><div class="ltag">{C.world.chain.name}</div><b>{ch.text}</b><p>{C.world.chain.debrief}</p></div>
           {/if}
-          <p>Это конец прототипа. Дальше по плану: DNS-логи и песочница, линия инсайдера, регуляторные часы НКЦКИ и РКН, пулл-реквесты и финал недели.</p>
+          <p>Это конец прототипа. Дальше по плану: линия инсайдера, регуляторные часы НКЦКИ и РКН, пулл-реквесты и финал недели.</p>
           <div class="btns"><button class="go" type="button" onclick={restart}>Начать заново</button><button class="go ghost" type="button" onclick={onexit}>В меню</button></div>
         </section>
       {/if}

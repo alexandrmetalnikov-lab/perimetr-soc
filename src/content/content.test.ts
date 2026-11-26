@@ -6,7 +6,7 @@ const { world, cases } = loadContent();
 describe('контент', () => {
   it('загружает все смены и кейсы', () => {
     expect(world.days.map(d => d.n)).toEqual([1, 2, 3]);
-    expect(cases.length).toBe(24);
+    expect(cases.length).toBe(26);
     expect(cases.filter(c => c.day === 1).map(c => c.id)).toEqual(['lp', 'zay', 'bec', 'iv', 'bel', 'df', 'sm', 'koz', 'nw']);
   });
 
@@ -27,7 +27,7 @@ describe('ветки сквозной атаки в смене 3', () => {
     cases.filter(c => c.day === 3 && matches(c.when, flags, new Set(ups))).map(c => c.id);
 
   it('пропустили письмо: маячок и Kerberoasting', () => {
-    expect(day3({ chain: 'foothold' })).toEqual(['lp3', 'kzn', 'beac', 'adm', 'orl', 'kerb']);
+    expect(day3({ chain: 'foothold' })).toEqual(['lp3', 'kzn', 'beac', 'adm', 'orl', 'kerb', 'dns-legit', 'dns-attack']);
   });
   it('эскалировали маячок: Kerberoasting не приходит', () => {
     expect(day3({ chain: 'foothold', beacon: 'escalated' })).not.toContain('kerb');
@@ -36,10 +36,10 @@ describe('ветки сквозной атаки в смене 3', () => {
     expect(day3({ chain: 'blocked' })).toContain('retry');
   });
   it('эскалировали: цепочки нет', () => {
-    expect(day3({ chain: 'contained' })).toEqual(['lp3', 'kzn', 'adm', 'orl']);
+    expect(day3({ chain: 'contained' })).toEqual(['lp3', 'kzn', 'adm', 'orl', 'dns-legit', 'dns-attack']);
   });
   it('number matching меняет MFA-бомбинг на звонок', () => {
-    expect(day3({ chain: 'contained' }, ['nm'])).toEqual(['lp3', 'kzn', 'adm', 'orl2']);
+    expect(day3({ chain: 'contained' }, ['nm'])).toEqual(['lp3', 'kzn', 'adm', 'orl2', 'dns-legit', 'dns-attack']);
   });
 });
 
