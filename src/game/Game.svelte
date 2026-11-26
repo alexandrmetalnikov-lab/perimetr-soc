@@ -40,7 +40,7 @@
   let volAmb = $state(70), volSfx = $state(80);
   const AUDIO_KEY = 'perimetr-soc.audio';
   function saveAudio() {
-    setSound(sound); setVolume('amb', volAmb / 100); setVolume('sfx', volSfx / 100);
+    setVolume('amb', volAmb / 100); setVolume('sfx', volSfx / 100);
     try { localStorage.setItem(AUDIO_KEY, JSON.stringify({ on: sound, amb: volAmb, sfx: volSfx })); } catch { /* недоступно */ }
   }
   // Размер текста документа и справочника: 1 → 1.15 → 1.3, запоминается в браузере.
@@ -66,6 +66,11 @@
     if (touch && armed !== d) { armed = d; uiClick(); return; }
     armed = null; sheet = true; stamp(d);
   }
+  function togglePause() {
+    if (s.phase !== 'shift' || busy) return;
+    paused = !paused;
+    armed = null;
+  }
   let shake = $state(false);
   let bubble = $state<{ title: string; text: string; portrait: string | null } | null>(null);
   let slips = $state<{ id: number; kind: E.GameEvent['kind']; title: string; text: string }[]>([]);
@@ -77,7 +82,7 @@
   const q = $derived(E.queue(C, s));
   const cur = $derived(E.current(C, s));
   const r = $derived(cur ? (s.runs[cur.id] ?? EMPTY) : EMPTY);
-  const ringing = $derived(s.phase === 'shift' && !busy && cur?.kind === 'call' && !answered.includes(cur.id));
+  const ringing = $derived(s.phase === 'shift' && !busy && !paused && cur?.kind === 'call' && !answered.includes(cur.id));
   const day = $derived(C.world.days.find(d => d.n === s.day)!);
   const findings = $derived(r.findings);
   const tools = $derived({ sandbox: E.hasTool(C, s, 'sandbox'), ti: E.hasTool(C, s, 'ti'), nm: s.upgrades.includes('nm'), trial: (day.trial ?? []).length > 0 });
@@ -86,14 +91,16 @@
     const { r, clip } = cutBox(L.trayFront);
     return { box: rectStyle(r), clip, bg: `background-image:url(${asset(L.bg)});background-position:-${r.x}cqw -${(r.y / 100) * L.ratio * 100}cqw` };
   });
-  const canStamp = $derived(s.phase === 'shift' && !!cur && !busy && !ringing);
+  const canStamp = $derived(s.phase === 'shift' && !!cur && !busy && !paused && !ringing);
   const callTip = $derived(ringing ? 'Снять трубку' : cur?.call ? (r.called ? 'Уже проверено' : `${cur.call.label} · 30 мин · C`) : 'Проверка по телефону не нужна');
   const phoneBg = $derived(`background-image:url(${asset(L.bg)});background-position:-${L.phone.x}cqw -${(L.phone.y / 100) * L.ratio * 100}cqw`);
   const spent = $derived(picks.reduce((a, id) => a + (C.world.upgrades.find(u => u.id === id)?.cost ?? 0), 0));
 
-  $effect(() => { if (ringing) startRing(); else stopRing(); });
-  // Фон смены звучит, пока идёт смена и не нажата пауза; утро, отчёт и финал — короткие заставки.
-  $effect(() => { roomTone(s.phase === 'shift' && !paused); });
+  $effect(() => {
+    setSound(sound);
+    if (sound && ringing) startRing(); else stopRing();
+    roomTone(sound && s.phase === 'shift' && !paused);
+  });
   $effect(() => {
     const ph = s.phase;
     if (ph === 'morning') sting('sting-morning');
@@ -115,12 +122,12 @@
   }
 
   // ---------- действия ----------
-  function reveal(id: string) { if (!busy && E.reveal(C, s, id)) { keys(); checkTime(); } }
+  function reveal(id: string) { if (!busy && !paused && E.reveal(C, s, id)) { keys(); checkTime(); } }
 
-  function answer() { if (cur && !answered.includes(cur.id)) { answered = [...answered, cur.id]; pickup(); } }
+  function answer() { if (ringing && cur) { answered = [...answered, cur.id]; pickup(); } }
 
   function phone() {
-    if (busy || s.phase !== 'shift' || !cur) return;
+    if (busy || paused || s.phase !== 'shift' || !cur) return;
     if (ringing) return answer();
     const call = E.secondChannel(C, s);
     if (!call) return;
@@ -132,7 +139,7 @@
   }
 
   function stamp(d: Decision) {
-    if (busy || s.phase !== 'shift' || !cur || ringing) return;
+    if (!canStamp) return;
     if (d === 'escalate' && s.esc <= 0) { slip('info', 'Эскалаций не осталось', 'Вторая линия больше не принимает эскалации в эту смену.'); return; }
     busy = true; ins.on = false; ins.sel = null; drop = d;
     setTimeout(() => { mark = d; stampThunk(); shake = false; requestAnimationFrame(() => (shake = true)); }, 330);
@@ -149,10 +156,10 @@
     }, 1450);
   }
 
-  function toggleInspect() { if (s.phase !== 'shift' || busy) return; ins.on = !ins.on; ins.sel = null; }
+  function toggleInspect() { if (s.phase !== 'shift' || busy || paused) return; ins.on = !ins.on; ins.sel = null; }
 
   function onFieldPick(target: EventTarget | null, ev: Event) {
-    if (!ins.on || s.phase !== 'shift') return;
+    if (!ins.on || paused || s.phase !== 'shift') return;
     const f = (target as HTMLElement | null)?.closest?.('.f') as HTMLElement | null;
     if (!f?.dataset.k) return;
     ev.preventDefault();
@@ -223,19 +230,29 @@
     const onKey = (e: KeyboardEvent) => {
       if (s.phase !== 'shift' || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target as HTMLElement;
-      if (t.classList?.contains('f') && (e.key === 'Enter' || e.key === ' ')) { onFieldPick(t, e); return; }
+      if (e.key === 'Escape' && mixer) { mixer = false; return; }
       if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
+      if (e.key === 'p' || e.key === 'з') {
+        if (!e.repeat) togglePause();
+        return;
+      }
+      if (paused) return;
+      if (t.classList?.contains('f') && (e.key === 'Enter' || e.key === ' ')) { onFieldPick(t, e); return; }
       const d = DECISIONS.find(x => STAMP[x].key === e.key);
       if (d) stamp(d);
       else if (e.key === 'i' || e.key === 'ш') toggleInspect();
       else if (e.key === 'b' || e.key === 'и') { if (!drawer) binder(); drawer = !drawer; }
       else if (e.key === 'c' || e.key === 'с') phone();
-      else if (e.key === 'p' || e.key === 'з') paused = !paused;
-      else if (e.key === 'Escape') { if (mixer) mixer = false; else if (ins.on) ins.on = false; else drawer = false; }
+      else if (e.key === 'Escape') { if (ins.on) ins.on = false; else drawer = false; }
     };
     addEventListener('keydown', onKey);
     const stopSnow = startSnow(canvas);
-    return () => { removeEventListener('resize', onResize); removeEventListener('keydown', onKey); clearInterval(t); stopSnow(); stopRing(); };
+    return () => {
+      removeEventListener('pointerdown', unlockAudio);
+      removeEventListener('resize', onResize);
+      removeEventListener('keydown', onKey);
+      clearInterval(t); stopSnow(); stopRing(); roomTone(false);
+    };
   });
 
   const ambientLines = $derived(AMBIENT.slice(0, Math.min(AMBIENT.length, ambient)).slice(-6));
@@ -247,8 +264,8 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="game {lid}" class:inspecting={ins.on} style="--zoom:{zoom}" onclick={e => onFieldPick(e.target, e)}>
-  <header class="hud">
-    <div class="brand"><button class="back" type="button" onclick={onexit} title="В меню">←</button><b>ПЕРИМЕТР</b>
+  <header class="hud" inert={s.phase !== 'shift'}>
+    <div class="brand"><button class="back" type="button" onclick={onexit} disabled={busy} title="В меню">←</button><b>ПЕРИМЕТР</b>
       <span>Смена {shiftNo} из {daysTotal} · {day.date}, {day.dow}</span></div>
     <div class="meters">
       <div class="m clock"><small>Время</small><b>{E.fmtMin(s.min)}</b></div>
@@ -259,9 +276,9 @@
       <div class="m loy"><small>Лояльность</small><b>{s.loyalty}</b><i class="bar"><i style="width:{Math.max(0, Math.min(100, s.loyalty))}%;background:{s.loyalty > 60 ? 'var(--ok)' : s.loyalty > 30 ? 'var(--stamp-esc)' : 'var(--alarm)'}"></i></i></div>
     </div>
     <div class="ctl">
-      <button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={s.phase !== 'shift'} title="Инспекция · I">🔍<span class="lbl">Инспекция</span></button>
-      <button type="button" class="binbtn" aria-pressed={drawer} onclick={e => { e.stopPropagation(); if (!drawer) binder(); else uiClick(); drawer = !drawer; }} title="Справочник · B">📁{findings.length ? ` ${findings.length}` : ''}</button>
-      <button type="button" aria-pressed={paused} onclick={() => (paused = !paused)}>{paused ? '▶' : '❚❚'}<span class="lbl">{paused ? 'Дальше' : 'Пауза'}</span></button>
+      <button type="button" aria-pressed={ins.on} onclick={e => { e.stopPropagation(); toggleInspect(); }} disabled={paused || busy} aria-label="Инспекция" title="Инспекция · I">🔍<span class="lbl">Инспекция</span></button>
+      <button type="button" class="binbtn" aria-pressed={drawer} disabled={paused} onclick={e => { e.stopPropagation(); if (!drawer) binder(); else uiClick(); drawer = !drawer; }} aria-label="Справочник" title="Справочник · B">📁{findings.length ? ` ${findings.length}` : ''}</button>
+      <button type="button" aria-pressed={paused} aria-label="Пауза" disabled={busy} onclick={togglePause}>{paused ? '▶' : '❚❚'}<span class="lbl">{paused ? 'Дальше' : 'Пауза'}</span></button>
       <button type="button" onclick={cycleZoom} title="Размер текста" aria-label="Размер текста: {Math.round(zoom * 100)}%">Aa<span class="lbl">{Math.round(zoom * 100)}%</span></button>
       <div class="mixwrap">
         <button type="button" aria-expanded={mixer} onclick={e => { e.stopPropagation(); mixer = !mixer; }} title="Звук">{sound ? '🔊' : '🔇'}</button>
@@ -304,48 +321,60 @@
     </div>
     {#if alert}<div class="redspill" style="--lx:{L.lamp.x + L.lamp.w / 2}%;--ly:{L.lamp.y + L.lamp.h / 2}%" aria-hidden="true"></div>{/if}
 
-    <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { if (!drawer) binder(); else uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник{findings.length ? ` · находок: ${findings.length}` : ''} · B</span></button>
-    <button class="hot phone" class:ring={ringing} type="button" style={rectStyle(L.phone)} onclick={phone} aria-label="Телефон">
-      <span class="phonecut" style={phoneBg}></span><span class="tip">{callTip}</span>
-    </button>
-    <div class="stamps" role="group" aria-label="Штампы">
-      {#each DECISIONS as d (d)}
-        <div class="stamp" class:off={!canStamp || (d === 'escalate' && s.esc <= 0)} class:gone={drop === d || mark === d} class:armed={armed === d} style={rectStyle(L.stamps[d])}>
-          <span class="shadow"></span>
-          <button type="button" aria-label={STAMP[d].label} onclick={e => { e.stopPropagation(); tapStamp(d); }}><img src={asset(STAMP[d].sprite)} alt="" draggable="false" /></button>
-          <span class="tip">{STAMP[d].label}{d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[d].key}</span>
-        </div>
-      {/each}
-      <span class="trayfront" style="{tray.box};clip-path:{tray.clip};{tray.bg}"></span>
-    </div>
-
-    {#if cur && s.phase === 'shift'}
-      {#if lid === 'port'}
-        <button class="sheettab" class:closed={!sheet} type="button" style="right:{100 - L.doc.x - L.doc.w}%;top:{L.doc.y}%;--dy:{L.doc.h * L.ratio - 13}cqw"
-          onclick={e => { e.stopPropagation(); uiClick(); sheet = !sheet; armed = null; }}>{sheet ? '▾ К столу' : '▴ Документ'}</button>
-      {/if}
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <article class="doc {docState}" class:closed={lid === 'port' && !sheet} style="{rectStyle(L.doc)};--dy:{L.doc.h * L.ratio - 13}cqw"
-        onclickcapture={e => { if (lid === 'port' && !sheet) { e.stopPropagation(); e.preventDefault(); sheet = true; } }}>
-        <CaseDoc c={cur} {r} index={q.indexOf(cur) + 1} total={q.length} upgrades={s.upgrades} people={P}
-          answered={answered.includes(cur.id)} {mark} canUse={t => E.hasTool(C, s, t)} onreveal={reveal} onanswer={answer} />
-      </article>
-    {/if}
-    {#if drop}<img class="stampspr" src={asset(STAMP[drop].sprite)} alt="" style="left:{L.doc.x + L.doc.w * 0.62}%;top:{L.doc.y - 4}%" />{/if}
-
-    <aside class="drawer" class:open={drawer} aria-label="Справочник" aria-hidden={!drawer}>
-      <Binder content={C} day={s.day} bind:tab findings={findings} esc={s.esc} {tools} onclose={() => (drawer = false)} />
-    </aside>
-
-    {#if bubble}
-      <div class="bubble">
-        {#if bubble.portrait}<div class="bava" style="background-image:url({bubble.portrait})"></div>{/if}
-        <div><b>{bubble.title}</b>{bubble.text}</div>
+    <div class="desk-controls" inert={paused || s.phase !== 'shift'}>
+      <button class="hot binder" type="button" style={rectStyle(L.binder)} onclick={() => { if (!drawer) binder(); else uiClick(); drawer = !drawer; }} aria-label="Справочник"><span class="tip">Справочник{findings.length ? ` · находок: ${findings.length}` : ''} · B</span></button>
+      <button class="hot phone" class:ring={ringing} type="button" style={rectStyle(L.phone)} onclick={phone} aria-label="Телефон">
+        <span class="phonecut" style={phoneBg}></span><span class="tip">{callTip}</span>
+      </button>
+      <div class="stamps" role="group" aria-label="Штампы" inert={lid === 'port'}>
+        {#each DECISIONS as d (d)}
+          <div class="stamp" class:off={!canStamp || (d === 'escalate' && s.esc <= 0)} class:gone={drop === d || mark === d} class:armed={armed === d} style={rectStyle(L.stamps[d])}>
+            <span class="shadow"></span>
+            <button type="button" aria-label={STAMP[d].label} disabled={!canStamp} onclick={e => { e.stopPropagation(); tapStamp(d); }}><img src={asset(STAMP[d].sprite)} alt="" draggable="false" /></button>
+            <span class="tip">{STAMP[d].label}{d === 'escalate' ? ` · осталось ${s.esc}` : ''} · {STAMP[d].key}</span>
+          </div>
+        {/each}
+        <span class="trayfront" style="{tray.box};clip-path:{tray.clip};{tray.bg}"></span>
       </div>
-    {/if}
-    {#if paused && s.phase === 'shift'}<button class="pausecover" type="button" onclick={() => (paused = false)}>Пауза · нажмите, чтобы продолжить</button>{/if}
+
+      {#if cur && s.phase === 'shift'}
+        {#if lid === 'port'}
+          <button class="sheettab" class:closed={!sheet} type="button" aria-expanded={sheet} style="right:{100 - L.doc.x - L.doc.w}%;top:{L.doc.y}%;--dy:{L.doc.h * L.ratio - 13}cqw"
+            onclick={e => { e.stopPropagation(); uiClick(); sheet = !sheet; armed = null; }}>{sheet ? '▾ К столу' : '▴ Документ'}</button>
+        {/if}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <article class="doc {docState}" class:closed={lid === 'port' && !sheet} style="{rectStyle(L.doc)};--dy:{L.doc.h * L.ratio - 13}cqw"
+          onclickcapture={() => { if (lid === 'port' && !sheet) sheet = true; }}>
+          <div inert={lid === 'port' && !sheet}>
+            <CaseDoc c={cur} {r} index={q.indexOf(cur) + 1} total={q.length} upgrades={s.upgrades} people={P}
+              answered={answered.includes(cur.id)} {mark} canUse={t => E.hasTool(C, s, t)} onreveal={reveal} onanswer={answer} />
+          </div>
+        </article>
+      {/if}
+      {#if drop}<img class="stampspr" src={asset(STAMP[drop].sprite)} alt="" style="left:{L.doc.x + L.doc.w * 0.62}%;top:{L.doc.y - 4}%" />{/if}
+
+      <aside class="drawer" class:open={drawer} aria-label="Справочник" inert={!drawer}>
+        <Binder content={C} day={s.day} bind:tab findings={findings} esc={s.esc} {tools} onclose={() => (drawer = false)} />
+      </aside>
+
+      {#if bubble}
+        <div class="bubble">
+          {#if bubble.portrait}<div class="bava" style="background-image:url({bubble.portrait})"></div>{/if}
+          <div><b>{bubble.title}</b>{bubble.text}</div>
+        </div>
+      {/if}
+    </div>
+    {#if paused && s.phase === 'shift'}<button class="pausecover" type="button" onclick={togglePause}>Пауза · нажмите, чтобы продолжить</button>{/if}
   </div>
 
+  {#if lid === 'port' && !sheet && s.phase === 'shift'}
+    <div class="touch-stamps" role="group" aria-label="Штампы">
+      {#each DECISIONS as d (d)}
+        <button type="button" disabled={!canStamp || (d === 'escalate' && s.esc <= 0)}
+          aria-pressed={touch ? armed === d : undefined} onclick={() => tapStamp(d)}>{STAMP[d].label}</button>
+      {/each}
+    </div>
+  {/if}
 
   <div class="slips" aria-live="polite">
     {#each slips as x (x.id)}<div class="slip {x.kind}"><b>{x.title}</b>{x.text}</div>{/each}
@@ -363,7 +392,7 @@
         <li>Объект виден так, как его видит сотрудник. Кнопки <b>«Изучить»</b> раскрывают адрес, заголовки, журналы, песочницу и стоят минут смены. Верное решение без лишнего изучения даёт бонус.</li>
         <li><b>Инспекция</b> (кнопка 🔍 вверху или клавиша I): кликните по двум полям, которые противоречат друг другу, в документе или справочнике. Находка обосновывает решение.</li>
         <li><b>Телефон</b> на столе: проверка по второму каналу, 30 минут. Некоторые регламенты требуют её обязательно. Входящий звонок нужно снять.</li>
-        <li><b>Штампы</b> в лотке на столе (на телефоне: первое касание поднимает штамп, второе ставит; документ сворачивается кнопкой «К столу»): пропустить, заблокировать или эскалировать на вторую линию. Эскалаций всего 4 за смену.</li>
+        <li><b>Штампы</b> в лотке на столе: пропустить, заблокировать или эскалировать на вторую линию. На телефоне нажмите «К столу». Под столом появятся кнопки: первое касание выбирает штамп, второе ставит. Эскалаций всего 4 за смену.</li>
         <li>Вечером — <b>бюджет отдела</b>: купленные инструменты меняют следующие смены.</li>
       </ol>
       <p class="keys">Клавиши: 1, 2, 3 — штампы · I — инспекция · B — справочник · C — телефон · P — пауза</p>
@@ -476,6 +505,7 @@
 
   /* сцена вписывается в экран по высоте: шапка и панель действий всегда видны */
   .scene{position:relative;width:100%;max-width:min(100%,calc((100dvh - 78px) * 1.5));margin:0 auto;container-type:inline-size;overflow:hidden;background:#0b0f18 center/cover no-repeat;user-select:none}
+  .desk-controls{display:contents}
   .port .scene{max-width:min(100%,560px,calc((100dvh - 120px) / 1.5));margin:0 auto}
   .port .hud{gap:6px 10px;position:relative}
   .port .brand span{font-size:10px;flex-basis:100%}
@@ -630,6 +660,10 @@
   .port .bubble{left:4%;right:4%;top:auto;bottom:3%;width:auto;font-size:max(11px,2.9cqw);padding:2.5cqw 3cqw}
   .port .bava{width:12cqw;height:16cqw}
   .port .pausecover{font-size:5cqw}
+  .touch-stamps{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:6px;width:100%;max-width:560px;margin:0 auto}
+  .touch-stamps button{min-height:44px;padding:4px 2px;border:1px solid var(--line);background:var(--night-2);color:var(--ink);font-family:var(--f-mono);font-size:clamp(10px, 2.8vw, 13px)}
+  .touch-stamps button[aria-pressed="true"]{color:var(--lamp);border-color:var(--lamp)}
+  .touch-stamps button:disabled{opacity:.45}
   @media (max-width:560px){
     .meters{gap:4px 12px}
     .bar{width:56px}
