@@ -87,17 +87,29 @@ export const sting = (id: 'sting-morning' | 'sting-evening' | 'sting-final') => 
 
 export function alarm() { if (!play('sfx-alarm')) synthAlarm(); }
 
-// Звонок: файл — одна трель, повторяется каждые 3 секунды, пока не снимут трубку.
-let ring: { stop: () => void } | null = null;
+// Пока звонок активен, повторяем одну трель. После загрузки файла следующая трель уже будет из него.
+let stopRinging: (() => void) | null = null;
 export function startRing() {
-  const a = ac(); if (!a || !enabled) return; stopRing();
-  if (bufs.get('sfx-ring')) {
-    let n = 0; let cur: AudioBufferSourceNode | false = play('sfx-ring');
-    const t = setInterval(() => { if (++n >= 6) return stopRing(); cur = play('sfx-ring'); }, 3000);
-    ring = { stop: () => { clearInterval(t); if (cur) try { cur.stop(); } catch { /* уже */ } } };
-  } else ring = synthRing(a);
+  if (!enabled || stopRinging) return;
+  const a = ac();
+  if (!a) return;
+  let stopBurst = ringBurst(a);
+  const timer = setInterval(() => {
+    stopBurst();
+    stopBurst = ringBurst(a);
+  }, 3000);
+  stopRinging = () => { clearInterval(timer); stopBurst(); };
 }
-export function stopRing() { ring?.stop(); ring = null; }
+
+function ringBurst(a: AudioContext): () => void {
+  const src = play('sfx-ring');
+  return src ? () => src.stop() : synthRing(a);
+}
+
+export function stopRing() {
+  stopRinging?.();
+  stopRinging = null;
+}
 
 // Фон смены: гул серверной и метель, по кругу. Плавно появляется и уходит.
 let amb: { src: AudioBufferSourceNode; g: GainNode } | null = null;
@@ -148,16 +160,17 @@ function synthClick() {
   g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
   o.connect(g).connect(master); o.start(t); o.stop(t + 0.05);
 }
-function synthRing(a: AudioContext) {
+function synthRing(a: AudioContext): () => void {
   const gain = a.createGain(); gain.gain.value = 0; gain.connect(master!);
-  const osc = [440, 480].map(fq => { const o = a.createOscillator(); o.frequency.value = fq; o.connect(gain); o.start(); return o; });
   const t = a.currentTime;
-  for (let k = 0; k < 6; k++) {
-    const s = t + k * 3;
-    gain.gain.setValueAtTime(0, s); gain.gain.linearRampToValueAtTime(0.08, s + 0.02);
-    gain.gain.setValueAtTime(0.08, s + 1.5); gain.gain.linearRampToValueAtTime(0, s + 1.55);
-  }
-  return { stop: () => osc.forEach(o => { try { o.stop(); } catch { /* уже */ } }) };
+  gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(0.08, t + 0.02);
+  gain.gain.setValueAtTime(0.08, t + 1.5); gain.gain.linearRampToValueAtTime(0, t + 1.55);
+  const osc = [440, 480].map(fq => {
+    const o = a.createOscillator();
+    o.frequency.value = fq; o.connect(gain); o.start(t); o.stop(t + 1.55);
+    return o;
+  });
+  return () => osc.forEach(o => o.stop());
 }
 function synthAlarm() {
   const a = ac(); if (!a || !master || !enabled) return; const t = a.currentTime;

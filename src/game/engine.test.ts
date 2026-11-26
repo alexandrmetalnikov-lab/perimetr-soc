@@ -133,7 +133,10 @@ describe('конец смены и кампания', () => {
   });
 
   it('утренние новости применяют последствия', () => {
-    const s = game(2); play(s, { ceo: 'allow', qak: 'escalate' });
+    const s = game(2);
+    const report = play(s, { ceo: 'allow', qak: 'escalate' });
+    expect(report.missed).toBe(0);
+    expect(report.verdict).toBe('Смена с нарушениями регламента');
     const pts = s.pts, loy = s.loyalty;
     const news = E.startDay(C, s, 3);
     expect(news.some(n => n.text.includes('теневом форуме'))).toBe(true);

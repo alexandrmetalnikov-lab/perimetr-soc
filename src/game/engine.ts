@@ -198,7 +198,12 @@ export function endShift(c: Content, s: GameState): ShiftSummary {
   }
   s.history.push({ day: s.day, pts: dayPts, missed, warns: s.warns });
   s.phase = isLastDay(c, s) ? 'final' : 'report';
-  const verdict = missed > 0 ? 'Периметр пробит' : s.loyalty < 50 ? 'Периметр цел, бизнес в ярости' : s.warns > 2 ? 'Периметр цел, но с замечаниями' : 'Чистая смена';
+  const hasViolation = s.results.some(r => r.verdict === 'policy' || r.verdict === 'violation');
+  let verdict = 'Чистая смена';
+  if (missed > 0) verdict = 'Периметр пробит';
+  else if (hasViolation) verdict = 'Смена с нарушениями регламента';
+  else if (s.loyalty < 50) verdict = 'Периметр цел, бизнес в ярости';
+  else if (s.warns > 0 || s.results.some(r => r.verdict === 'unresolved')) verdict = 'Периметр цел, но с замечаниями';
   return { missed, earned: s.earned, study, dayPts, verdict };
 }
 
